@@ -21,7 +21,7 @@ st.markdown("""
     .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover { color: var(--theme-color) !important; }
     .stTabs [data-baseweb="tab-highlight"] { background-color: var(--theme-color) !important; }
 
-    /* 초슬림 업로더 (버튼 한 줄 크기) */
+    /* 초슬림 업로더 */
     [data-testid="stFileUploader"] { padding: 0 !important; }
     [data-testid="stFileUploaderDropzone"] {
         padding: 5px 15px !important;
@@ -98,13 +98,12 @@ for i, subject in enumerate(subjects):
         date_path = f"date_{subject}.txt"
         history_path = f"history_{subject}.csv"
         
-        # 🌟 지저분한 업로더는 클릭할 때만 보이도록 숨김!
         with st.expander("🔄 엑셀 파일 업데이트 (어시스턴트 및 멘토 전용)"):
             uploaded_file = st.file_uploader(f"[{subject}] 파일 업로드", type=['xlsx'], key=f"up_{subject}")
             
             if uploaded_file is not None:
                 try:
-                    # 🌟 [날짜 정제 로직] '최종 내보내기' 글자 무시하고 YYYY-MM-DD 만 딱 뽑아냄!
+                    # 🌟 [날짜 정제] YYYY-MM-DD 만 완벽하게 추출
                     raw_xlsx = pd.read_excel(uploaded_file, header=None, nrows=1)
                     raw_str = str(raw_xlsx.iloc[0, 0]) if not raw_xlsx.empty else ""
                     date_match = re.search(r'\d{4}-\d{2}-\d{2}', raw_str)
@@ -117,15 +116,23 @@ for i, subject in enumerate(subjects):
                     df_new = pd.read_excel(uploaded_file, header=3)
                     df_new.to_csv(file_path, index=False)
                     
-                    # 🌟 [그래프용 데이터] 이수율(%)로 정확히 계산하여 저장
+                    # 🌟 [에러 방지용] 이수율 히스토리 저장
                     df_new['출석'] = pd.to_numeric(df_new['출석'], errors='coerce').fillna(0)
                     current_rate = (len(df_new[df_new['출석'] >= 10]) / len(df_new)) * 100
                     new_hist = pd.DataFrame([{'업데이트 일시': clean_date, '이수율(%)': current_rate}])
                     
                     if os.path.exists(history_path):
                         h_df = pd.read_csv(history_path)
+                        # 과거 '평균수강률(%)' 열이 남아있다면 강제로 '이수율(%)'로 변경 (에러 원천 차단)
+                        if '평균수강률(%)' in h_df.columns and '이수율(%)' not in h_df.columns:
+                            h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
+                        
                         if clean_date not in h_df['업데이트 일시'].values:
                             pd.concat([h_df, new_hist], ignore_index=True).to_csv(history_path, index=False)
+                        else:
+                            # 같은 날짜면 덮어쓰기
+                            h_df.loc[h_df['업데이트 일시'] == clean_date, '이수율(%)'] = current_rate
+                            h_df.to_csv(history_path, index=False)
                     else: 
                         new_hist.to_csv(history_path, index=False)
                         
@@ -135,9 +142,12 @@ for i, subject in enumerate(subjects):
 
         # --- 메인 대시보드 화면 ---
         if os.path.exists(file_path):
-            # 🌟 레이아웃 겹침 완벽 해결 (음수 마진 삭제)
             if os.path.exists(date_path):
                 with open(date_path, "r", encoding="utf-8") as f: s_date = f.read()
+                # 🌟 날짜가 이상하면 강제로 필터링해서 보여주기
+                if "최종" in s_date:
+                    date_match = re.search(r'\d{4}-\d{2}-\d{2}', s_date)
+                    s_date = f"업데이트 날짜: {date_match.group(0)}" if date_match else "업데이트 날짜 확인 필요"
                 st.markdown(f"<div style='text-align: right; color: #E67E22; font-weight: bold; margin-bottom: 10px;'>🕒 {s_date}</div>", unsafe_allow_html=True)
             
             df = pd.read_csv(file_path)
@@ -148,22 +158,28 @@ for i, subject in enumerate(subjects):
             mid_df = df[(df['출석']>0) & (df['출석']<10)]
             high_df = df[df['출석']>=10]
             
-            # 🌟 깔끔해진 Power BI 스타일 꺾은선 그래프
+            # 🌟 안전한 꺾은선 그래프 렌더링
             if os.path.exists(history_path):
                 h_df = pd.read_csv(history_path)
+                if '평균수강률(%)' in h_df.columns and '이수율(%)' not in h_df.columns:
+                    h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
+                    
                 st.markdown("<h4 class='sub-title'>📈 주차별 이수율(2/3 이상 수강) 추이</h4>", unsafe_allow_html=True)
                 
                 if len(h_df) >= 2:
-                    # 명확하게 X축은 날짜, Y축은 이수율(%)로 지정
-                    st.line_chart(h_df, x='업데이트 일시', y='이수율(%)')
+                    # 인덱스를 활용하여 X축 글씨 겹침 방지
+                    chart_data = h_df.set_index('업데이트 일시')[['이수율(%)']]
+                    st.line_chart(chart_data)
                 else: 
                     st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 주에 파일이 한 번 더 올라오면 꺾은선 추이 그래프가 그려집니다!")
             
             st.divider()
+            
+            # 🌟 [인원수 강조형 지표] 비율과 사람 수를 명확하게 동시 표기
             c1, c2, c3 = st.columns(3)
-            c1.metric("전체 평균 수강률", f"{(df['출석'].mean()/15)*100:.1f}%")
-            c2.metric("안정권 (2/3↑) 학생", f"{(len(high_df)/len(df))*100:.1f}%", f"{len(high_df)}명")
-            c3.metric("전면 미수강 (0강)", f"{(len(zero_df)/len(df))*100:.1f}%", f"{len(zero_df)}명", delta_color="inverse")
+            c1.metric(f"전체 수강생 (총 {len(df)}명)", f"평균 {(df['출석'].mean()/15)*100:.1f}%")
+            c2.metric(f"안정권 (2/3↑) 학생", f"{(len(high_df)/len(df))*100:.1f}%", f"{len(high_df)}명 안정", delta_color="normal")
+            c3.metric(f"전면 미수강 (0강)", f"{(len(zero_df)/len(df))*100:.1f}%", f"-{len(zero_df)}명 (밀착관리 필요)", delta_color="inverse")
             
             st.divider()
             
