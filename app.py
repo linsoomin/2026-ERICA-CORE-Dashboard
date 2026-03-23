@@ -102,7 +102,6 @@ for i, subject in enumerate(subjects):
             
             if uploaded_file is not None:
                 try:
-                    # 🌟 [날짜 정제] YYYY-MM-DD 형태만 추출
                     raw_xlsx = pd.read_excel(uploaded_file, header=None, nrows=1)
                     raw_str = str(raw_xlsx.iloc[0, 0]) if not raw_xlsx.empty else ""
                     date_match = re.search(r'\d{4}-\d{2}-\d{2}', raw_str)
@@ -117,24 +116,18 @@ for i, subject in enumerate(subjects):
                     df_new['출석'] = pd.to_numeric(df_new['출석'], errors='coerce').fillna(0)
                     current_rate = (len(df_new[df_new['출석'] >= 10]) / len(df_new)) * 100
                     
-                    # 🌟 [과거 기록 세탁기]
                     if os.path.exists(history_path):
                         h_df = pd.read_csv(history_path)
-                        # 과거 이름 고치기
                         if '업데이트 일시' in h_df.columns: h_df.rename(columns={'업데이트 일시': '업데이트 날짜'}, inplace=True)
                         if '평균수강률(%)' in h_df.columns: h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
                         
-                        # 과거 지저분한 날짜들 정제
                         def fix_date(d):
                             m = re.search(r'\d{4}-\d{2}-\d{2}', str(d))
                             return m.group(0) if m else str(d)
                         h_df['업데이트 날짜'] = h_df['업데이트 날짜'].apply(fix_date)
                         
-                        # 새 데이터 추가
                         new_row = pd.DataFrame([{'업데이트 날짜': clean_date, '이수율(%)': current_rate}])
                         h_df = pd.concat([h_df, new_row], ignore_index=True)
-                        
-                        # 중복 제거 및 소수점 1자리로 반올림 (호버 시 깔끔하게)
                         h_df.drop_duplicates(subset=['업데이트 날짜'], keep='last', inplace=True)
                         h_df['이수율(%)'] = h_df['이수율(%)'].round(1)
                         h_df.to_csv(history_path, index=False)
@@ -150,10 +143,9 @@ for i, subject in enumerate(subjects):
         if os.path.exists(file_path):
             if os.path.exists(date_path):
                 with open(date_path, "r", encoding="utf-8") as f: s_date = f.read()
-                # 과거에 저장된 지저분한 날짜가 뜰까봐 여기서도 한 번 더 정제
                 d_match = re.search(r'\d{4}-\d{2}-\d{2}', s_date)
                 clean_s_date = d_match.group(0) if d_match else s_date
-                st.markdown(f"<div style='text-align: right; color: #E67E22; font-weight: bold; margin-bottom: 10px;'>🕒 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: right; color: #E67E22; font-weight: bold; margin-bottom: 5px;'>🕒 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
             
             df = pd.read_csv(file_path)
             df['출석'] = pd.to_numeric(df['출석'], errors='coerce').fillna(0)
@@ -163,34 +155,46 @@ for i, subject in enumerate(subjects):
             mid_df = df[(df['출석']>0) & (df['출석']<10)]
             high_df = df[df['출석']>=10]
             
-            # 🌟 [수정 완료] Power BI 스타일 고퀄리티 꺾은선 그래프
-            if os.path.exists(history_path):
-                h_df = pd.read_csv(history_path)
+            # 🌟 [핵심 업데이트] 좌측 6개 패널 / 우측 그래프 레이아웃 분리
+            col_metrics, col_graph = st.columns([4, 6]) # 좌우 비율 4:6
+            
+            # 좌측: 숫자 패널 6개 (3줄 x 2칸)
+            with col_metrics:
+                st.markdown("<h4 class='sub-title'>📊 핵심 수강 지표</h4>", unsafe_allow_html=True)
                 
-                # 오류 방지용: 혹시라도 옛날 파일 이름이 남아있다면 즉시 이름 변경
-                if '업데이트 일시' in h_df.columns: h_df.rename(columns={'업데이트 일시': '업데이트 날짜'}, inplace=True)
-                if '평균수강률(%)' in h_df.columns: h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
+                # 첫 번째 줄: 전체 요약
+                m1, m2 = st.columns(2)
+                m1.metric("전체 수강생", f"{len(df)}명")
+                m2.metric("평균 수강률", f"{(df['출석'].mean()/15)*100:.1f}%")
                 
+                # 두 번째 줄: 안정권 지표
+                m3, m4 = st.columns(2)
+                m3.metric("✅ 안정권 (10강↑)", f"{len(high_df)}명")
+                m4.metric("✅ 안정권 비율", f"{(len(high_df)/len(df))*100:.1f}%")
+                
+                # 세 번째 줄: 위험군 지표
+                m5, m6 = st.columns(2)
+                m5.metric("🚨 전면 미수강", f"{len(zero_df)}명")
+                m6.metric("🚨 미수강 비율", f"{(len(zero_df)/len(df))*100:.1f}%")
+            
+            # 우측: 꺾은선 그래프
+            with col_graph:
                 st.markdown("<h4 class='sub-title'>📈 주차별 이수율(2/3 이상 수강) 추이</h4>", unsafe_allow_html=True)
-                
-                if len(h_df) >= 2:
-                    # 인덱스를 "업데이트 날짜"로 설정하면 X축 이름이 됨, 컬럼명은 Y축 이름이 됨.
-                    chart_data = h_df.set_index('업데이트 날짜')[['이수율(%)']]
-                    st.line_chart(chart_data)
-                else: 
-                    st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 업데이트 시 꺾은선 추이 그래프가 생성됩니다.")
+                if os.path.exists(history_path):
+                    h_df = pd.read_csv(history_path)
+                    if '업데이트 일시' in h_df.columns: h_df.rename(columns={'업데이트 일시': '업데이트 날짜'}, inplace=True)
+                    if '평균수강률(%)' in h_df.columns: h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
+                    
+                    if len(h_df) >= 2:
+                        chart_data = h_df.set_index('업데이트 날짜')[['이수율(%)']]
+                        st.line_chart(chart_data)
+                    else: 
+                        st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 업데이트 시 꺾은선 추이 그래프가 생성됩니다.")
             
             st.divider()
             
-            # 🌟 [수정 완료] 마이너스(-) 기호 삭제, delta_color="off"를 통해 깔끔한 회색 텍스트로 처리
-            c1, c2, c3 = st.columns(3)
-            c1.metric(f"전체 수강생 (총 {len(df)}명)", f"평균 {(df['출석'].mean()/15)*100:.1f}%")
-            c2.metric(f"안정권 (2/3↑) 학생", f"{(len(high_df)/len(df))*100:.1f}%", f"{len(high_df)}명 안정", delta_color="normal")
-            c3.metric(f"전면 미수강 (0강)", f"{(len(zero_df)/len(df))*100:.1f}%", f"{len(zero_df)}명 (밀착관리 필요)", delta_color="off")
-            
-            st.divider()
-            
-            t_z, t_m, t_h = st.tabs([f"🆘 전면 미수강({len(zero_df)})", f"⚠️ 일부 수강({len(mid_df)})", f"✅ 안정권({len(high_df)})"])
+            # 하단: 명단 탭
+            t_z, t_m, t_h = st.tabs([f"🆘 전면 미수강({len(zero_df)}명)", f"⚠️ 일부 수강({len(mid_df)}명)", f"✅ 안정권({len(high_df)}명)"])
             d_cols = [c for c in ['순번','이름','학번','학과','출석'] if c in df.columns]
             with t_z: st.dataframe(zero_df[d_cols].style.apply(style_attendance, threshold_2_3=10, subset=['출석']), use_container_width=True)
             with t_m: st.dataframe(mid_df[d_cols].style.apply(style_attendance, threshold_2_3=10, subset=['출석']), use_container_width=True)
