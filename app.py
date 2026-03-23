@@ -4,29 +4,14 @@ import numpy as np
 import os
 import datetime
 import re
-import altair as alt
 
-# --- 1️⃣ 웹 페이지 설정 및 모던 다크모드 CSS ---
+# --- 1️⃣ 페이지 설정 및 라이트/다크모드 완벽 호환 CSS ---
 st.set_page_config(page_title="2026 CORE 수강률 관리", layout="wide")
 
 st.markdown("""
 <style>
-    :root { 
-        --theme-color: #15397C; 
-        --card-bg: #ffffff;
-        --card-border: #e9ecef;
-        --text-color: #333333;
-        --circle-bg: #eeeeee;
-    }
-    @media (prefers-color-scheme: dark) { 
-        :root { 
-            --theme-color: #5DADE2; 
-            --card-bg: #1e1e1e;
-            --card-border: #333333;
-            --text-color: #ffffff;
-            --circle-bg: #444444;
-        } 
-    }
+    :root { --theme-color: #15397C; }
+    @media (prefers-color-scheme: dark) { :root { --theme-color: #5DADE2; } }
     
     .main-title { text-align: center; font-weight: 900; color: var(--theme-color); margin-bottom: 5px; }
     .sub-title { color: var(--theme-color); margin-bottom: 15px; font-weight: bold; }
@@ -35,7 +20,27 @@ st.markdown("""
     .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover { color: var(--theme-color) !important; }
     .stTabs [data-baseweb="tab-highlight"] { background-color: var(--theme-color) !important; }
 
-    /* 초슬림 업로더 */
+    /* 🌟 숫자 메트릭 패널 테두리 (다크/라이트 자동 호환) */
+    [data-testid="stMetric"] {
+        border: 1px solid rgba(128,128,128,0.2);
+        border-radius: 8px;
+        padding: 15px;
+        background-color: transparent;
+    }
+
+    /* 🌟 커스텀 도넛 차트 패널 */
+    .donut-card {
+        border: 1px solid rgba(128,128,128,0.2);
+        border-radius: 8px;
+        padding: 15px;
+        text-align: center;
+        background-color: transparent;
+        height: 100%;
+    }
+    .donut-title { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: inherit; opacity: 0.8; }
+    .donut-value { font-size: 22px; font-weight: bold; margin-top: 5px; }
+
+    /* 업로더 슬림화 */
     [data-testid="stFileUploader"] { padding: 0 !important; }
     [data-testid="stFileUploaderDropzone"] {
         padding: 5px 15px !important; min-height: 40px !important;
@@ -43,8 +48,6 @@ st.markdown("""
     }
     [data-testid="stFileUploaderDropzone"] div[data-testid="stMarkdownContainer"], 
     [data-testid="stFileUploaderIcon"], [data-testid="stFileUploaderDropzone"] svg { display: none !important; }
-    
-    /* 업데이트 버튼 스타일 */
     .stButton>button { width: 100%; font-weight: bold; border-color: var(--theme-color); color: var(--theme-color); }
     .stButton>button:hover { background-color: var(--theme-color); color: white; }
 </style>
@@ -59,21 +62,16 @@ subjects = [
     "물리학(손승우)", "미적분(김은상)", "통계(이우주)", "기하와벡터(김은상)"
 ]
 
-# 🌟 [디자인 핵심] 현대적인 도넛형 차트 생성 함수
-def get_donut_html(percentage, label, sub_text, color):
+# 🌟 심플하고 에러 없는 도넛 차트 생성기
+def get_donut(title, percentage, color):
     return f"""
-    <div style="background-color: var(--card-bg); border: 1px solid var(--card-border); border-radius: 12px; padding: 15px; text-align: center; box-shadow: 2px 2px 8px rgba(0,0,0,0.04); margin-bottom: 15px;">
-        <div style="position: relative; width: 80px; height: 80px; margin: 0 auto;">
-            <svg viewBox="0 0 36 36" style="width: 100%; height: 100%;">
-                <path fill="none" stroke="var(--circle-bg)" stroke-width="3.5" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                <path fill="none" stroke="{color}" stroke-width="3.5" stroke-dasharray="{percentage}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke-linecap="round" />
-            </svg>
-            <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 14px; font-weight: bold; color: var(--text-color);">
-                {percentage:.1f}%
-            </div>
-        </div>
-        <div style="margin-top: 10px; font-size: 14px; font-weight: bold; color: var(--text-color);">{label}</div>
-        <div style="font-size: 12px; color: gray; margin-top: 2px;">{sub_text}</div>
+    <div class="donut-card">
+        <div class="donut-title">{title}</div>
+        <svg viewBox="0 0 36 36" style="width: 60px; height: 60px; display: block; margin: 0 auto;">
+            <path fill="none" stroke="rgba(128,128,128,0.2)" stroke-width="3.5" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path fill="none" stroke="{color}" stroke-width="3.5" stroke-dasharray="{percentage}, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" stroke-linecap="round" />
+        </svg>
+        <div class="donut-value" style="color: {color};">{percentage:.1f}%</div>
     </div>
     """
 
@@ -90,7 +88,6 @@ tabs = st.tabs(["🏆 종합 랭킹"] + subjects)
 # --- 2️⃣ 종합 랭킹 ---
 with tabs[0]:
     st.subheader("🏆 전체 과목 수강률 종합 랭킹")
-    
     ranking_data = []
     all_dept_data = []
     
@@ -126,8 +123,7 @@ with tabs[0]:
         dept_stats = combined_dept_df.groupby('학과').agg(
             수강생수=('출석', 'count'), 평균수강률=('출석', lambda x: (x.mean() / 15) * 100), 안정권비율=('출석', lambda x: (len(x[x >= 10]) / len(x)) * 100)
         ).reset_index().sort_values(by='평균수강률', ascending=False).reset_index(drop=True)
-        
-        st.success(f"🎉 현재 평균 수강률이 가장 높은 학과는 **[{dept_stats.iloc[0]['학과']}]** ({dept_stats.iloc[0]['평균수강률']:.1f}%) 입니다!")
+        st.success(f"🎉 현재 평균 수강률 가장 높은 학과: **[{dept_stats.iloc[0]['학과']}]** ({dept_stats.iloc[0]['평균수강률']:.1f}%)")
         st.dataframe(dept_stats.style.format({'평균수강률': '{:.1f}%', '안정권비율': '{:.1f}%'}).background_gradient(cmap='Blues', subset=['평균수강률']), use_container_width=True, hide_index=True)
 
 # --- 3️⃣ 개별 과목 ---
@@ -139,7 +135,7 @@ for i, subject in enumerate(subjects):
             uploaded_file = st.file_uploader(f"[{subject}] 파일 업로드", type=['xlsx'], key=f"up_{subject}")
             
             if uploaded_file is not None:
-                if st.button(f"🚀 {subject} 데이터 업데이트하기", key=f"btn_{subject}"):
+                if st.button(f"🚀 {subject} 데이터 반영하기", key=f"btn_{subject}"):
                     try:
                         raw_xlsx = pd.read_excel(uploaded_file, header=None, nrows=1)
                         raw_str = str(raw_xlsx.iloc[0, 0]) if not raw_xlsx.empty else ""
@@ -159,6 +155,7 @@ for i, subject in enumerate(subjects):
                             h_df = pd.read_csv(history_path)
                             if '업데이트 일시' in h_df.columns: h_df.rename(columns={'업데이트 일시': '업데이트 날짜'}, inplace=True)
                             if '평균수강률(%)' in h_df.columns: h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
+                            
                             h_df['업데이트 날짜'] = h_df['업데이트 날짜'].astype(str).apply(lambda x: re.search(r'\d{4}-\d{2}-\d{2}', x).group(0) if re.search(r'\d{4}-\d{2}-\d{2}', x) else x)
                             
                             new_row = pd.DataFrame([{'업데이트 날짜': clean_date, '이수율(%)': round(current_rate, 1)}])
@@ -178,68 +175,58 @@ for i, subject in enumerate(subjects):
                 with open(date_path, "r", encoding="utf-8") as f: s_date = f.read()
                 d_match = re.search(r'\d{4}-\d{2}-\d{2}', s_date)
                 clean_s_date = d_match.group(0) if d_match else s_date
-                # 다운로드/링크 버튼 삭제, 날짜만 우측에 예쁘게 표기
                 st.markdown(f"<div style='text-align: right; color: #15397C; font-weight: 900; font-size: 16px; margin-bottom: 15px;'>🕒 업데이트 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
             
             df = pd.read_csv(file_path)
             df['출석'] = pd.to_numeric(df['출석'], errors='coerce').fillna(0)
+            total_cnt = len(df)
             
             zero_df = df[df['출석']==0]
             mid_df = df[(df['출석']>0) & (df['출석']<10)]
             high_df = df[df['출석']>=10]
             
-            total_cnt = len(df)
-            
-            # 🌟 [디자인 하이라이트] 좌/우 완벽한 레이아웃 (좌: 도넛 4개, 우: 그래프)
-            col_metrics, col_graph = st.columns([4, 6])
+            # 🌟 [디자인 핵심] 좌측: 6개 패널 (숫자 3개 + 도넛 3개 혼합) / 우측: 그래프
+            col_metrics, col_graph = st.columns([5, 5])
             
             with col_metrics:
                 st.markdown("<h4 class='sub-title'>📊 핵심 수강 지표</h4>", unsafe_allow_html=True)
                 
-                # 도넛 차트 2x2 배열
+                # 1행: 전체 현황
                 m1, m2 = st.columns(2)
-                with m1:
+                with m1: st.metric("👥 전체 수강생", f"{total_cnt}명")
+                with m2: 
                     avg_rate = (df['출석'].mean()/15)*100 if total_cnt > 0 else 0
-                    st.markdown(get_donut_html(avg_rate, "평균 수강률", f"총 {total_cnt}명", "#15397C"), unsafe_allow_html=True)
-                    
-                    mid_rate = (len(mid_df)/total_cnt)*100 if total_cnt > 0 else 0
-                    st.markdown(get_donut_html(mid_rate, "⚠️ 일부 수강", f"1~9강 ({len(mid_df)}명)", "#F39C12"), unsafe_allow_html=True)
+                    st.markdown(get_donut("평균 수강률", avg_rate, "#15397C"), unsafe_allow_html=True)
                 
-                with m2:
+                # 2행: 안정권 현황
+                m3, m4 = st.columns(2)
+                with m3: st.metric("✅ 안정권 (10강↑)", f"{len(high_df)}명")
+                with m4:
                     high_rate = (len(high_df)/total_cnt)*100 if total_cnt > 0 else 0
-                    st.markdown(get_donut_html(high_rate, "✅ 안정권", f"10강↑ ({len(high_df)}명)", "#4CAF50"), unsafe_allow_html=True)
-                    
+                    st.markdown(get_donut("안정권 비율", high_rate, "#4CAF50"), unsafe_allow_html=True)
+                
+                # 3행: 미수강 현황 (🚨 이모지로 전부 통일)
+                m5, m6 = st.columns(2)
+                with m5: st.metric("🚨 전면 미수강 (0강)", f"{len(zero_df)}명")
+                with m6:
                     zero_rate = (len(zero_df)/total_cnt)*100 if total_cnt > 0 else 0
-                    st.markdown(get_donut_html(zero_rate, "🚨 전면 미수강", f"0강 ({len(zero_df)}명)", "#E74C3C"), unsafe_allow_html=True)
+                    st.markdown(get_donut("미수강 비율", zero_rate, "#E74C3C"), unsafe_allow_html=True)
             
             with col_graph:
                 st.markdown("<h4 class='sub-title'>📈 주차별 이수율(2/3 이상 수강) 추이</h4>", unsafe_allow_html=True)
                 if os.path.exists(history_path):
                     h_df = pd.read_csv(history_path)
                     
-                    # 🌟 [오류 완벽 해결] 점 1개만 있어도 동그라미로 강제 출력!
-                    base = alt.Chart(h_df).encode(
-                        x=alt.X('업데이트 날짜:N', title='업데이트 날짜', axis=alt.Axis(labelAngle=-45)),
-                        y=alt.Y('이수율(%):Q', title='안정권 이수율 (%)', scale=alt.Scale(domain=[0, 100]))
-                    )
-                    
-                    # 꺾은선 + 둥근 점 + 아래로 퍼지는 한양대 블루 그라데이션
-                    line = base.mark_line(color='#15397C', strokeWidth=3)
-                    points = base.mark_circle(color='#15397C', size=80) # 점이 항상 보이게 추가!
-                    area = base.mark_area(
-                        color=alt.Gradient(
-                            gradient='linear',
-                            stops=[alt.GradientStop(color='#15397C', offset=0), alt.GradientStop(color='rgba(255,255,255,0)', offset=1)],
-                            x1=1, x2=1, y1=1, y2=0
-                        ),
-                        opacity=0.4
-                    )
-                    
-                    st.altair_chart((area + line + points).interactive(), use_container_width=True)
+                    if len(h_df) > 0:
+                        chart_data = h_df.set_index('업데이트 날짜')[['이수율(%)']]
+                        # 🌟 [오류 박멸] 스트림릿 순정 Area Chart 사용 (절대 안 뻗고, 자동 반올림, X/Y축 자동 표기, 그라데이션 내장)
+                        st.area_chart(chart_data, color="#15397C", use_container_width=True)
+                    else: 
+                        st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 주에 파일이 한 번 더 올라오면 꺾은선 추이 그래프가 그려집니다!")
             
             st.divider()
             
-            t_z, t_m, t_h = st.tabs([f"🆘 전면 미수강({len(zero_df)}명)", f"⚠️ 일부 수강({len(mid_df)}명)", f"✅ 안정권({len(high_df)}명)"])
+            t_z, t_m, t_h = st.tabs([f"🚨 전면 미수강({len(zero_df)}명)", f"⚠️ 일부 수강({len(mid_df)}명)", f"✅ 안정권({len(high_df)}명)"])
             d_cols = [c for c in ['순번','이름','학번','학과','출석'] if c in df.columns]
             with t_z: st.dataframe(zero_df[d_cols].style.apply(style_attendance, threshold_2_3=10, subset=['출석']), use_container_width=True)
             with t_m: st.dataframe(mid_df[d_cols].style.apply(style_attendance, threshold_2_3=10, subset=['출석']), use_container_width=True)
