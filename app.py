@@ -3,10 +3,9 @@ import pandas as pd
 import numpy as np
 import os
 
-# 1️⃣ 웹 페이지 탭 설정 (제목 변경)
+# 웹 페이지 설정
 st.set_page_config(page_title="2026 CORE 수강률 관리", layout="wide")
 
-# 2️⃣ 대시보드 메인 제목 변경
 st.markdown("<h1 style='text-align: center; color: #15397C;'>🦁 2026 CORE 수강률 관리 대시보드</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: gray;'>모든 과목 수강률 90% 이상 달성을 목표로 합니다.</p>", unsafe_allow_html=True)
 st.divider()
@@ -18,26 +17,37 @@ subjects = [
 
 tabs = st.tabs(subjects)
 
+# 🎨 [핵심 업데이트] 출석 횟수에 따른 3단계 직관적 색상 지정 함수
+def style_attendance(s, threshold_2_3):
+    colors = []
+    for val in s:
+        if val == 0:
+            # 0강 수강: 눈에 띄는 빨간색 바탕
+            colors.append('background-color: #FFCDD2; color: #900C3F; font-weight: bold;') 
+        elif val >= threshold_2_3:
+            # 2/3 이상 수강: 진한 초록색 바탕
+            colors.append('background-color: #4CAF50; color: white; font-weight: bold;') 
+        else:
+            # 그 중간(연한 초록색): 수강은 했으나 2/3 미만
+            colors.append('background-color: #C8E6C9; color: #1E8449; font-weight: bold;') 
+    return colors
+
 for i, subject in enumerate(subjects):
     with tabs[i]:
         st.subheader(f"📘 {subject} 대시보드")
         
-        # 내부 저장용 파일 (가볍고 빠른 csv로 내부 관리)
         file_path = f"data_{subject}.csv"
         
-        # 3️⃣ 파일 업로드 형식을 csv에서 xlsx로 변경
         uploaded_file = st.file_uploader(f"[{subject}] 최신 LMS 엑셀 파일(.xlsx) 업로드", type=['xlsx'], key=f"upload_{subject}")
         
         if uploaded_file is not None:
             try:
-                # 4️⃣ 엑셀 파일을 읽어오도록 pd.read_excel 사용
                 df_new = pd.read_excel(uploaded_file, header=3)
-                df_new.to_csv(file_path, index=False) # 서버에는 처리하기 쉬운 csv로 저장
+                df_new.to_csv(file_path, index=False)
                 st.success(f"✅ {subject} 데이터가 업데이트되었습니다! 이제 창을 닫아도 최신 상태가 유지됩니다.")
             except Exception as e:
                 st.error(f"엑셀 파일을 읽는 중 오류가 발생했습니다: {e}")
 
-        # 아래는 기존 대시보드 출력 로직과 동일
         if os.path.exists(file_path):
             df = pd.read_csv(file_path)
             
@@ -50,10 +60,13 @@ for i, subject in enumerate(subjects):
                 zero_ratio = (zero_count / total_students) * 100 if total_students else 0
                 
                 total_lectures = 15
-                target_ratio = 0.90
-                threshold_attendance = int(np.ceil(total_lectures * target_ratio))
+                target_ratio = 0.90 # 궁극적 목표 90%
                 
-                achieved_students = df[df['출석'] >= threshold_attendance]
+                # 📌 달성 기준값 계산
+                threshold_90 = int(np.ceil(total_lectures * target_ratio)) # 목표(90%) 달성 기준
+                threshold_2_3 = int(np.ceil(total_lectures * (2/3)))       # 진한 초록색(2/3) 색칠 기준
+                
+                achieved_students = df[df['출석'] >= threshold_90]
                 achieved_count = len(achieved_students)
                 achieved_ratio = (achieved_count / total_students) * 100 if total_students else 0
                 
@@ -62,25 +75,33 @@ for i, subject in enumerate(subjects):
                 
                 col1, col2, col3 = st.columns(3)
                 col1.metric("현재 전체 평균 수강률", f"{avg_completion_ratio:.1f}%")
-                col2.metric("목표(90%) 달성 학생", f"{achieved_ratio:.1f}%", f"{achieved_count}명 / {threshold_attendance}강 이상")
+                col2.metric("목표(90%) 달성 학생", f"{achieved_ratio:.1f}%", f"{achieved_count}명 / {threshold_90}강 이상")
                 col3.metric("아직 1강도 수강 안 한 학생", f"{zero_ratio:.1f}%", f"-{zero_count}명 / 위험", delta_color="inverse")
                 
                 st.divider()
                 
-                display_cols = ['순번', '이름', '학번', '학과', '출석', '결석']
+                # ✂️ [핵심 업데이트] 싸강이므로 '결석' 열 삭제
+                display_cols = ['순번', '이름', '학번', '학과', '출석']
                 existing_cols = [col for col in display_cols if col in df.columns]
                 
                 tab_zero, tab_under = st.tabs(["🆘 0강 수강 (즉시 연락)", "⚠️ 90% 미달성"])
+                
                 with tab_zero:
                     if zero_count > 0:
-                        st.dataframe(zero_students[existing_cols].reset_index(drop=True), use_container_width=True)
+                        df_zero = zero_students[existing_cols].reset_index(drop=True)
+                        # 색상 함수 적용
+                        styled_zero = df_zero.style.apply(style_attendance, threshold_2_3=threshold_2_3, subset=['출석'])
+                        st.dataframe(styled_zero, use_container_width=True)
                     else:
                         st.success("대단합니다! 모든 학생이 수강을 시작했습니다.")
+                        
                 with tab_under:
-                    under_target_students = df[(df['출석'] > 0) & (df['출석'] < threshold_attendance)]
+                    under_target_students = df[(df['출석'] > 0) & (df['출석'] < threshold_90)]
                     if len(under_target_students) > 0:
-                        styled_df = under_target_students[existing_cols].reset_index(drop=True).style.background_gradient(cmap='YlOrRd', subset=['출석'])
-                        st.dataframe(styled_df, use_container_width=True)
+                        df_under = under_target_students[existing_cols].reset_index(drop=True)
+                        # 색상 함수 적용
+                        styled_under = df_under.style.apply(style_attendance, threshold_2_3=threshold_2_3, subset=['출석'])
+                        st.dataframe(styled_under, use_container_width=True)
                     else:
                         st.success("🎉 해당하는 모든 학생이 목표 수강률을 달성했습니다!")
             else:
