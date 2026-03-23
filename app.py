@@ -4,52 +4,73 @@ import numpy as np
 import os
 import datetime
 
-# --- 1️⃣ 웹 페이지 설정 및 한양대 테마 컬러 CSS 적용 ---
+# --- 1️⃣ 웹 페이지 설정 및 다크모드 반응형 CSS 적용 ---
 st.set_page_config(page_title="2026 CORE 수강률 관리", layout="wide")
 
-HYU_BLUE = "#15397C"
-
-st.markdown(f"""
+st.markdown("""
 <style>
+    /* 🌟 반응형 테마 컬러 설정 (카멜레온 효과) */
+    :root {
+        --theme-color: #15397C; /* 라이트 모드: 한양대 블루 */
+    }
+    
+    @media (prefers-color-scheme: dark) {
+        :root {
+            --theme-color: #5DADE2; /* 다크 모드: 가독성 좋은 하늘색 */
+        }
+    }
+
+    /* 메인 제목 및 서브 제목에 테마 컬러 적용 */
+    .main-title {
+        text-align: center;
+        font-weight: 900;
+        color: var(--theme-color);
+    }
+    .sub-title {
+        color: var(--theme-color);
+        margin-bottom: 10px;
+    }
+
     /* 탭(메뉴) 스타일링 */
-    .stTabs [data-baseweb="tab"] {{
+    .stTabs [data-baseweb="tab"] {
         font-size: 16px;
         font-weight: bold;
         padding-top: 15px;
         padding-bottom: 15px;
-    }}
-    .stTabs [aria-selected="true"] {{
-        color: {HYU_BLUE} !important;
-        border-bottom: 3px solid {HYU_BLUE} !important;
-    }}
-    .stTabs [data-baseweb="tab"]:hover {{
-        color: {HYU_BLUE} !important;
-    }}
+    }
     
-    /* 🌟 [핵심 업데이트] 뚱뚱한 파일 업로더를 얇고 슬림하게 압축 */
-    [data-testid="stFileUploaderDropzone"] {{
+    /* 선택된 탭 및 마우스 호버 시 글씨 색상 변경 */
+    .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover {
+        color: var(--theme-color) !important;
+    }
+    
+    /* 🚨 눈에 거슬리던 '빨간 밑줄'을 테마 컬러로 강제 변경! */
+    .stTabs [data-baseweb="tab-highlight"] {
+        background-color: var(--theme-color) !important;
+    }
+
+    /* 파일 업로더 슬림화 */
+    [data-testid="stFileUploaderDropzone"] {
         min-height: 20px !important;
         padding: 5px 15px !important;
         border-radius: 8px !important;
-    }}
-    [data-testid="stFileUploaderDropzone"] div {{
+    }
+    [data-testid="stFileUploaderDropzone"] div {
         padding: 0px !important;
         font-size: 14px !important;
-    }}
-    [data-testid="stFileUploaderDropzone"] svg {{
-        display: none !important; /* 커다란 구름 아이콘 삭제 */
-    }}
-    [data-testid="stFileUploaderDropzone"] small {{
-        display: none !important; /* 'Limit 200MB' 같은 불필요한 작은 글씨 삭제 */
-    }}
-    [data-testid="stFileUploaderDropzone"] button {{
+    }
+    [data-testid="stFileUploaderDropzone"] svg, [data-testid="stFileUploaderDropzone"] small {
+        display: none !important;
+    }
+    [data-testid="stFileUploaderDropzone"] button {
         padding: 0px 10px !important;
         min-height: 30px !important;
-    }}
+    }
 </style>
 """, unsafe_allow_html=True)
 
-st.markdown(f"<h1 style='text-align: center; color: {HYU_BLUE}; font-weight: 900;'>🦁 2026 CORE 수강률 관리 대시보드</h1>", unsafe_allow_html=True)
+# 클래스를 적용하여 다크/라이트 모드에 따라 색상이 자동으로 변함
+st.markdown("<h1 class='main-title'>🦁 2026 CORE 수강률 관리 대시보드</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: gray;'>모든 과목 수강률 90% 이상 달성을 목표로 합니다.</p>", unsafe_allow_html=True)
 st.divider()
 
@@ -96,7 +117,7 @@ with tabs[0]:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown(f"<h3 style='color: {HYU_BLUE};'>📈 전체 평균 수강률 랭킹 (이수율 순)</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 class='sub-title'>📈 전체 평균 수강률 랭킹 (이수율 순)</h3>", unsafe_allow_html=True)
         sorted_by_comp = sorted(ranking_data, key=lambda x: x['평균수강률'], reverse=True)
         for i in range(len(subjects)):
             if i < len(sorted_by_comp):
@@ -109,7 +130,7 @@ with tabs[0]:
                 st.markdown(f"<div style='padding: 12px; border: 2px dashed #ccc; border-radius: 8px; color: #888; margin-bottom: 12px; background-color: #fafafa;'><b>{i+1}위</b> | ⬜ 아직 자료가 없어요</div>", unsafe_allow_html=True)
                 
     with col2:
-        st.markdown(f"<h3 style='color: {HYU_BLUE};'>🚨 위험도 랭킹 (미수강 학생 비율 순)</h3>", unsafe_allow_html=True)
+        st.markdown("<h3 class='sub-title'>🚨 위험도 랭킹 (미수강 학생 비율 순)</h3>", unsafe_allow_html=True)
         sorted_by_zero = sorted(ranking_data, key=lambda x: x['미수강비율'], reverse=True)
         for i in range(len(subjects)):
             if i < len(sorted_by_zero):
@@ -130,7 +151,6 @@ for i, subject in enumerate(subjects):
         date_path = f"date_{subject}.txt"
         history_path = f"history_{subject}.csv"
         
-        # 슬림해진 파일 업로더
         uploaded_file = st.file_uploader(f"[{subject}] 최신 LMS 엑셀 파일(.xlsx)을 업로드해 주세요", type=['xlsx'], key=f"upload_{subject}")
         
         if uploaded_file is not None:
@@ -198,14 +218,11 @@ for i, subject in enumerate(subjects):
                 avg_attendance_count = df['출석'].mean()
                 avg_completion_ratio = (avg_attendance_count / total_lectures) * 100
                 
-                # --- 🌟 [수정] 수강률 추이 그래프 스마트 처리 ---
                 if os.path.exists(history_path):
                     hist_df = pd.read_csv(history_path)
-                    st.markdown(f"<h4 style='color: {HYU_BLUE};'>📈 평균 수강률 업데이트 추이</h4>", unsafe_allow_html=True)
+                    st.markdown("<h4 class='sub-title'>📈 평균 수강률 업데이트 추이</h4>", unsafe_allow_html=True)
                     
                     chart_data = hist_df.set_index('업데이트 일시')[['평균수강률(%)']]
-                    
-                    # 기록이 1건뿐이면 막대그래프, 2건 이상이면 꺾은선 그래프로 자동 전환
                     if len(hist_df) == 1:
                         st.bar_chart(chart_data)
                         st.caption("📌 아직 기록이 1건뿐이라 막대그래프로 표시됩니다. 다음 업데이트부터 꺾은선으로 연결됩니다!")
