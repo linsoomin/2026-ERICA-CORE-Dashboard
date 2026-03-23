@@ -5,7 +5,7 @@ import os
 import datetime
 import re
 
-# --- 1️⃣ 페이지 설정 및 라이트/다크모드 완벽 호환 CSS ---
+# --- 1️⃣ 페이지 설정 및 라이트/다크모드 & 모바일 완벽 호환 CSS ---
 st.set_page_config(page_title="2026 CORE 수강률 관리", layout="wide")
 
 st.markdown("""
@@ -20,13 +20,38 @@ st.markdown("""
     .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover { color: var(--theme-color) !important; }
     .stTabs [data-baseweb="tab-highlight"] { background-color: var(--theme-color) !important; }
 
-    /* 🌟 숫자 메트릭 패널 테두리 (가장 깔끔하고 안정적인 형태) */
-    [data-testid="stMetric"] {
+    /* 🌟 [핵심] CSS Grid를 활용한 반응형 카드 레이아웃 (PC는 3칸, 모바일은 2칸) */
+    .metric-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    .metric-card {
         border: 1px solid rgba(128,128,128,0.2);
         border-radius: 8px;
         padding: 15px 20px;
         background-color: transparent;
         box-shadow: 1px 1px 5px rgba(0,0,0,0.02);
+    }
+    .metric-label { font-size: 14px; color: gray; margin-bottom: 5px; font-weight: 600; }
+    .metric-value { font-size: 1.8rem; font-weight: bold; line-height: 1.2; }
+    .metric-desc { font-size: 12px; color: gray; margin-top: 5px; }
+
+    /* 📱 모바일 전용 UI 세팅 */
+    @media (max-width: 768px) {
+        .main-title { 
+            font-size: 24px !important; 
+            word-break: keep-all; /* '대시보드' 글자가 쪼개지지 않도록 방지 */
+        }
+        .metric-grid {
+            grid-template-columns: repeat(2, 1fr); /* 모바일에서는 무조건 2칸씩 정렬 */
+            gap: 10px;
+        }
+        .metric-card { padding: 12px 10px; }
+        .metric-value { font-size: 1.5rem; }
+        .metric-label { font-size: 12px; }
+        .metric-desc { font-size: 10px; letter-spacing: -0.5px; }
     }
 
     /* 업로더 슬림화 */
@@ -63,7 +88,6 @@ tabs = st.tabs(["🏆 종합 랭킹"] + subjects)
 
 # --- 2️⃣ 종합 랭킹 ---
 with tabs[0]:
-    # 요청하신 "🏆 전체 과목 수강률 종합 랭킹" 글자 삭제 완료
     ranking_data = []
     all_dept_data = []
     
@@ -146,26 +170,43 @@ for i, subject in enumerate(subjects):
             
             st.markdown("<h4 class='sub-title'>📊 핵심 수강 지표</h4>", unsafe_allow_html=True)
             
-            # 🌟 [디자인 핵심] 그래프/도넛 전부 제거, 아주 반듯한 3x2 패널 레이아웃 적용
-            # 1행: 수치 (명)
-            m1, m2, m3 = st.columns(3)
-            with m1: st.metric("👥 전체 수강생", f"{total_cnt}명")
-            with m2: st.metric("✅ 안정권 학생 (10강↑)", f"{len(high_df)}명")
-            with m3: st.metric("🚨 전면 미수강 (0강)", f"{len(zero_df)}명")
+            # 🌟 [반응형 해결] 스트림릿 st.metric 대신 직접 HTML/CSS Grid로 짜서 모바일에서도 2칸 유지!
+            avg_rate = (df['출석'].mean()/15)*100 if total_cnt > 0 else 0
+            high_rate = (len(high_df)/total_cnt)*100 if total_cnt > 0 else 0
+            zero_rate = (len(zero_df)/total_cnt)*100 if total_cnt > 0 else 0
             
-            st.write("") # 줄바꿈 간격
-            
-            # 2행: 비율 (%) 및 하단 설명 텍스트
-            m4, m5, m6 = st.columns(3)
-            with m4: 
-                avg_rate = (df['출석'].mean()/15)*100 if total_cnt > 0 else 0
-                st.metric("📊 평균 수강률", f"{avg_rate:.1f}%", "전체 출석수 ÷ (전체 인원 × 15강)", delta_color="off")
-            with m5:
-                high_rate = (len(high_df)/total_cnt)*100 if total_cnt > 0 else 0
-                st.metric("✅ 안정권 비율", f"{high_rate:.1f}%", "안정권 학생수 ÷ 전체 수강생", delta_color="off")
-            with m6:
-                zero_rate = (len(zero_df)/total_cnt)*100 if total_cnt > 0 else 0
-                st.metric("🚨 미수강 비율", f"{zero_rate:.1f}%", "미수강 학생수 ÷ 전체 수강생", delta_color="off")
+            metric_html = f"""
+            <div class="metric-grid">
+                <div class="metric-card">
+                    <div class="metric-label">👥 전체 수강생</div>
+                    <div class="metric-value">{total_cnt}명</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">✅ 안정권 (10강↑)</div>
+                    <div class="metric-value">{len(high_df)}명</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">🚨 전면 미수강</div>
+                    <div class="metric-value">{len(zero_df)}명</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">📊 평균 수강률</div>
+                    <div class="metric-value">{avg_rate:.1f}%</div>
+                    <div class="metric-desc">전체 출석 ÷ (인원×15강)</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">✅ 안정권 비율</div>
+                    <div class="metric-value">{high_rate:.1f}%</div>
+                    <div class="metric-desc">안정권 학생 ÷ 전체</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">🚨 미수강 비율</div>
+                    <div class="metric-value">{zero_rate:.1f}%</div>
+                    <div class="metric-desc">미수강 학생 ÷ 전체</div>
+                </div>
+            </div>
+            """
+            st.markdown(metric_html, unsafe_allow_html=True)
             
             st.divider()
             
