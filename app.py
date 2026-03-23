@@ -31,8 +31,10 @@ st.markdown("""
     .metric-label { font-size: 14px; font-weight: 600; color: var(--text-color); opacity: 0.8; }
     .metric-value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 8px; }
 
+    /* 🌟 [수정 완료] 모바일 환경 제목 1줄 고정 & 폰트 최적화 */
     @media (max-width: 768px) {
-        .main-title { font-size: 22px; }
+        .main-title { font-size: 21px; white-space: nowrap; letter-spacing: -1px; }
+        .sub-desc { font-size: 12px; word-break: keep-all; }
         .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
         .metric-value { font-size: 22px; }
     }
@@ -178,7 +180,6 @@ for i, subject in enumerate(subjects):
             
             st.markdown("<div class='section-title'>핵심 수강 지표</div>", unsafe_allow_html=True)
             
-            # 🌟 [수정 완료] 다크/라이트 모드에서 완벽하게 보이도록 "var(--text-color)" 적용
             c1 = create_card("전체 수강생", f"{total_cnt}명", "var(--text-color)", "Total")
             c2 = create_card("안정권 학생", f"{len(high_df)}명", "#27AE60", "10강↑")
             c3 = create_card("전면 미수강", f"{len(zero_df)}명", "#E74C3C", "0강")
