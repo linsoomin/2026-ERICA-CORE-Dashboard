@@ -5,7 +5,7 @@ import os
 import datetime
 import re
 
-# --- 1️⃣ 웹 페이지 설정 및 초슬림/다크모드 CSS ---
+# --- 1️⃣ 웹 페이지 설정 및 다크모드 반응형 CSS ---
 st.set_page_config(page_title="2026 CORE 수강률 관리", layout="wide")
 
 st.markdown("""
@@ -13,10 +13,9 @@ st.markdown("""
     :root { --theme-color: #15397C; }
     @media (prefers-color-scheme: dark) { :root { --theme-color: #5DADE2; } }
     
-    .main-title { text-align: center; font-weight: 900; color: var(--theme-color); }
+    .main-title { text-align: center; font-weight: 900; color: var(--theme-color); margin-bottom: 5px; }
     .sub-title { color: var(--theme-color); margin-bottom: 10px; font-weight: bold; }
     
-    /* 탭 스타일 */
     .stTabs [data-baseweb="tab"] { font-size: 16px; font-weight: bold; }
     .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover { color: var(--theme-color) !important; }
     .stTabs [data-baseweb="tab-highlight"] { background-color: var(--theme-color) !important; }
@@ -103,37 +102,44 @@ for i, subject in enumerate(subjects):
             
             if uploaded_file is not None:
                 try:
-                    # 🌟 [날짜 정제] YYYY-MM-DD 만 완벽하게 추출
+                    # 🌟 [날짜 정제] YYYY-MM-DD 형태만 추출
                     raw_xlsx = pd.read_excel(uploaded_file, header=None, nrows=1)
                     raw_str = str(raw_xlsx.iloc[0, 0]) if not raw_xlsx.empty else ""
                     date_match = re.search(r'\d{4}-\d{2}-\d{2}', raw_str)
                     clean_date = date_match.group(0) if date_match else datetime.datetime.now().strftime('%Y-%m-%d')
                     
-                    display_date = f"업데이트 날짜: {clean_date}"
-                    with open(date_path, "w", encoding="utf-8") as f: f.write(display_date)
+                    with open(date_path, "w", encoding="utf-8") as f: f.write(clean_date)
                     
                     uploaded_file.seek(0)
                     df_new = pd.read_excel(uploaded_file, header=3)
                     df_new.to_csv(file_path, index=False)
                     
-                    # 🌟 [에러 방지용] 이수율 히스토리 저장
                     df_new['출석'] = pd.to_numeric(df_new['출석'], errors='coerce').fillna(0)
                     current_rate = (len(df_new[df_new['출석'] >= 10]) / len(df_new)) * 100
-                    new_hist = pd.DataFrame([{'업데이트 일시': clean_date, '이수율(%)': current_rate}])
                     
+                    # 🌟 [과거 기록 세탁기]
                     if os.path.exists(history_path):
                         h_df = pd.read_csv(history_path)
-                        # 과거 '평균수강률(%)' 열이 남아있다면 강제로 '이수율(%)'로 변경 (에러 원천 차단)
-                        if '평균수강률(%)' in h_df.columns and '이수율(%)' not in h_df.columns:
-                            h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
+                        # 과거 이름 고치기
+                        if '업데이트 일시' in h_df.columns: h_df.rename(columns={'업데이트 일시': '업데이트 날짜'}, inplace=True)
+                        if '평균수강률(%)' in h_df.columns: h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
                         
-                        if clean_date not in h_df['업데이트 일시'].values:
-                            pd.concat([h_df, new_hist], ignore_index=True).to_csv(history_path, index=False)
-                        else:
-                            # 같은 날짜면 덮어쓰기
-                            h_df.loc[h_df['업데이트 일시'] == clean_date, '이수율(%)'] = current_rate
-                            h_df.to_csv(history_path, index=False)
+                        # 과거 지저분한 날짜들 정제
+                        def fix_date(d):
+                            m = re.search(r'\d{4}-\d{2}-\d{2}', str(d))
+                            return m.group(0) if m else str(d)
+                        h_df['업데이트 날짜'] = h_df['업데이트 날짜'].apply(fix_date)
+                        
+                        # 새 데이터 추가
+                        new_row = pd.DataFrame([{'업데이트 날짜': clean_date, '이수율(%)': current_rate}])
+                        h_df = pd.concat([h_df, new_row], ignore_index=True)
+                        
+                        # 중복 제거 및 소수점 1자리로 반올림 (호버 시 깔끔하게)
+                        h_df.drop_duplicates(subset=['업데이트 날짜'], keep='last', inplace=True)
+                        h_df['이수율(%)'] = h_df['이수율(%)'].round(1)
+                        h_df.to_csv(history_path, index=False)
                     else: 
+                        new_hist = pd.DataFrame([{'업데이트 날짜': clean_date, '이수율(%)': round(current_rate, 1)}])
                         new_hist.to_csv(history_path, index=False)
                         
                     st.success("✅ 파일 처리가 완료되었습니다!")
@@ -144,11 +150,10 @@ for i, subject in enumerate(subjects):
         if os.path.exists(file_path):
             if os.path.exists(date_path):
                 with open(date_path, "r", encoding="utf-8") as f: s_date = f.read()
-                # 🌟 날짜가 이상하면 강제로 필터링해서 보여주기
-                if "최종" in s_date:
-                    date_match = re.search(r'\d{4}-\d{2}-\d{2}', s_date)
-                    s_date = f"업데이트 날짜: {date_match.group(0)}" if date_match else "업데이트 날짜 확인 필요"
-                st.markdown(f"<div style='text-align: right; color: #E67E22; font-weight: bold; margin-bottom: 10px;'>🕒 {s_date}</div>", unsafe_allow_html=True)
+                # 과거에 저장된 지저분한 날짜가 뜰까봐 여기서도 한 번 더 정제
+                d_match = re.search(r'\d{4}-\d{2}-\d{2}', s_date)
+                clean_s_date = d_match.group(0) if d_match else s_date
+                st.markdown(f"<div style='text-align: right; color: #E67E22; font-weight: bold; margin-bottom: 10px;'>🕒 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
             
             df = pd.read_csv(file_path)
             df['출석'] = pd.to_numeric(df['출석'], errors='coerce').fillna(0)
@@ -158,28 +163,30 @@ for i, subject in enumerate(subjects):
             mid_df = df[(df['출석']>0) & (df['출석']<10)]
             high_df = df[df['출석']>=10]
             
-            # 🌟 안전한 꺾은선 그래프 렌더링
+            # 🌟 [수정 완료] Power BI 스타일 고퀄리티 꺾은선 그래프
             if os.path.exists(history_path):
                 h_df = pd.read_csv(history_path)
-                if '평균수강률(%)' in h_df.columns and '이수율(%)' not in h_df.columns:
-                    h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
-                    
+                
+                # 오류 방지용: 혹시라도 옛날 파일 이름이 남아있다면 즉시 이름 변경
+                if '업데이트 일시' in h_df.columns: h_df.rename(columns={'업데이트 일시': '업데이트 날짜'}, inplace=True)
+                if '평균수강률(%)' in h_df.columns: h_df.rename(columns={'평균수강률(%)': '이수율(%)'}, inplace=True)
+                
                 st.markdown("<h4 class='sub-title'>📈 주차별 이수율(2/3 이상 수강) 추이</h4>", unsafe_allow_html=True)
                 
                 if len(h_df) >= 2:
-                    # 인덱스를 활용하여 X축 글씨 겹침 방지
-                    chart_data = h_df.set_index('업데이트 일시')[['이수율(%)']]
+                    # 인덱스를 "업데이트 날짜"로 설정하면 X축 이름이 됨, 컬럼명은 Y축 이름이 됨.
+                    chart_data = h_df.set_index('업데이트 날짜')[['이수율(%)']]
                     st.line_chart(chart_data)
                 else: 
-                    st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 주에 파일이 한 번 더 올라오면 꺾은선 추이 그래프가 그려집니다!")
+                    st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 업데이트 시 꺾은선 추이 그래프가 생성됩니다.")
             
             st.divider()
             
-            # 🌟 [인원수 강조형 지표] 비율과 사람 수를 명확하게 동시 표기
+            # 🌟 [수정 완료] 마이너스(-) 기호 삭제, delta_color="off"를 통해 깔끔한 회색 텍스트로 처리
             c1, c2, c3 = st.columns(3)
             c1.metric(f"전체 수강생 (총 {len(df)}명)", f"평균 {(df['출석'].mean()/15)*100:.1f}%")
             c2.metric(f"안정권 (2/3↑) 학생", f"{(len(high_df)/len(df))*100:.1f}%", f"{len(high_df)}명 안정", delta_color="normal")
-            c3.metric(f"전면 미수강 (0강)", f"{(len(zero_df)/len(df))*100:.1f}%", f"-{len(zero_df)}명 (밀착관리 필요)", delta_color="inverse")
+            c3.metric(f"전면 미수강 (0강)", f"{(len(zero_df)/len(df))*100:.1f}%", f"{len(zero_df)}명 (밀착관리 필요)", delta_color="off")
             
             st.divider()
             
