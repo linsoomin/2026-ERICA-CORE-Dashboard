@@ -99,20 +99,19 @@ with tabs[0]:
             else:
                 st.markdown(f"<div style='padding: 12px; border: 2px dashed #ccc; border-radius: 8px; color: #888; margin-bottom: 12px; background-color: #fafafa;'><b>{i+1}위</b> | ⬜ 아직 자료가 없어요</div>", unsafe_allow_html=True)
 
-# --- 3️⃣ 개별 과목 대시보드 (그래프 추가) ---
+# --- 3️⃣ 개별 과목 대시보드 ---
 for i, subject in enumerate(subjects):
     with tabs[i+1]:
         st.subheader(f"📘 {subject} 대시보드")
         
         file_path = f"data_{subject}.csv"
         date_path = f"date_{subject}.txt"
-        history_path = f"history_{subject}.csv" # 🌟 추이 그래프용 누적 데이터 파일
+        history_path = f"history_{subject}.csv"
         
         uploaded_file = st.file_uploader(f"[{subject}] 최신 LMS 엑셀 파일(.xlsx) 업로드", type=['xlsx'], key=f"upload_{subject}")
         
         if uploaded_file is not None:
             try:
-                # 1. 날짜 추출 및 정리
                 uploaded_file.seek(0)
                 date_df = pd.read_excel(uploaded_file, header=None, nrows=1)
                 update_str = str(date_df.iloc[0, 0])
@@ -126,7 +125,6 @@ for i, subject in enumerate(subjects):
                 with open(date_path, "w", encoding="utf-8") as f:
                     f.write(f"업데이트 기준: {clean_date}")
                 
-                # 2. 메인 데이터 저장 및 평균 수강률 사전 계산 (그래프용)
                 uploaded_file.seek(0)
                 df_new = pd.read_excel(uploaded_file, header=3)
                 df_new.to_csv(file_path, index=False)
@@ -135,11 +133,9 @@ for i, subject in enumerate(subjects):
                     df_new['출석'] = pd.to_numeric(df_new['출석'], errors='coerce').fillna(0)
                     current_avg_comp = (df_new['출석'].mean() / 15) * 100
                     
-                    # 3. 🌟 그래프를 위한 히스토리 누적 저장 로직
                     new_history = pd.DataFrame([{'업데이트 일시': clean_date, '평균수강률(%)': current_avg_comp}])
                     if os.path.exists(history_path):
                         hist_df = pd.read_csv(history_path)
-                        # 완전히 동일한 날짜의 데이터가 아닐 때만 추가 (중복 방지)
                         if clean_date not in hist_df['업데이트 일시'].values:
                             hist_df = pd.concat([hist_df, new_history], ignore_index=True)
                             hist_df.to_csv(history_path, index=False)
@@ -179,16 +175,16 @@ for i, subject in enumerate(subjects):
                 avg_attendance_count = df['출석'].mean()
                 avg_completion_ratio = (avg_attendance_count / total_lectures) * 100
                 
-                # --- 🌟 수강률 추이 꺾은선 그래프 출력 ---
+                # --- 🌟 [수정된 부분] 수강률 추이 꺾은선 그래프 ---
                 if os.path.exists(history_path):
                     hist_df = pd.read_csv(history_path)
                     st.markdown(f"<h4 style='color: {HYU_BLUE};'>📈 평균 수강률 업데이트 추이</h4>", unsafe_allow_html=True)
-                    # 그래프 시각화를 위해 인덱스를 날짜로 설정
-                    chart_data = hist_df.set_index('업데이트 일시')
+                    
+                    # 💡 오직 '평균수강률(%)' 열만 추출해서 그리도록 강력하게 통제합니다.
+                    chart_data = hist_df.set_index('업데이트 일시')[['평균수강률(%)']]
                     st.line_chart(chart_data)
                     st.divider()
                 
-                # --- KPI 지표 카드 ---
                 col1, col2, col3 = st.columns(3)
                 col1.metric("현재 전체 평균 수강률", f"{avg_completion_ratio:.1f}%")
                 col2.metric("목표(90%) 달성 학생", f"{achieved_ratio:.1f}%", f"{achieved_count}명 / {threshold_90}강 이상")
