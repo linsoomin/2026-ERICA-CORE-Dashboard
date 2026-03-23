@@ -9,18 +9,14 @@ st.set_page_config(page_title="2026 CORE 수강률 관리", layout="wide")
 
 st.markdown("""
 <style>
-    /* 🌟 반응형 테마 컬러 설정 (카멜레온 효과) */
     :root {
-        --theme-color: #15397C; /* 라이트 모드: 한양대 블루 */
+        --theme-color: #15397C; /* 한양대 블루 */
     }
-    
     @media (prefers-color-scheme: dark) {
         :root {
-            --theme-color: #5DADE2; /* 다크 모드: 가독성 좋은 하늘색 */
+            --theme-color: #5DADE2; /* 다크모드 하늘색 */
         }
     }
-
-    /* 메인 제목 및 서브 제목에 테마 컬러 적용 */
     .main-title {
         text-align: center;
         font-weight: 900;
@@ -30,26 +26,18 @@ st.markdown("""
         color: var(--theme-color);
         margin-bottom: 10px;
     }
-
-    /* 탭(메뉴) 스타일링 */
     .stTabs [data-baseweb="tab"] {
         font-size: 16px;
         font-weight: bold;
         padding-top: 15px;
         padding-bottom: 15px;
     }
-    
-    /* 선택된 탭 및 마우스 호버 시 글씨 색상 변경 */
     .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover {
         color: var(--theme-color) !important;
     }
-    
-    /* 🚨 눈에 거슬리던 '빨간 밑줄'을 테마 컬러로 강제 변경! */
     .stTabs [data-baseweb="tab-highlight"] {
         background-color: var(--theme-color) !important;
     }
-
-    /* 파일 업로더 슬림화 */
     [data-testid="stFileUploaderDropzone"] {
         min-height: 20px !important;
         padding: 5px 15px !important;
@@ -69,7 +57,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 클래스를 적용하여 다크/라이트 모드에 따라 색상이 자동으로 변함
 st.markdown("<h1 class='main-title'>🦁 2026 CORE 수강률 관리 대시보드</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: gray;'>모든 과목 수강률 90% 이상 달성을 목표로 합니다.</p>", unsafe_allow_html=True)
 st.divider()
@@ -200,47 +187,53 @@ for i, subject in enumerate(subjects):
             if '출석' in df.columns:
                 df['출석'] = pd.to_numeric(df['출석'], errors='coerce').fillna(0)
                 total_students = len(df)
-                
-                zero_students = df[df['출석'] == 0]
-                zero_count = len(zero_students)
-                zero_ratio = (zero_count / total_students) * 100 if total_students else 0
-                
                 total_lectures = 15
-                target_ratio = 0.90
                 
-                threshold_90 = int(np.ceil(total_lectures * target_ratio))
-                threshold_2_3 = int(np.ceil(total_lectures * (2/3)))
+                # 📌 달성 기준값 
+                threshold_2_3 = int(np.ceil(total_lectures * (2/3))) # 15강 기준 10강
                 
-                achieved_students = df[df['출석'] >= threshold_90]
-                achieved_count = len(achieved_students)
-                achieved_ratio = (achieved_count / total_students) * 100 if total_students else 0
+                # 📌 3단계 분류
+                zero_students = df[df['출석'] == 0]
+                mid_students = df[(df['출석'] > 0) & (df['출석'] < threshold_2_3)]
+                high_students = df[df['출석'] >= threshold_2_3]
                 
-                avg_attendance_count = df['출석'].mean()
-                avg_completion_ratio = (avg_attendance_count / total_lectures) * 100
+                zero_count = len(zero_students)
+                mid_count = len(mid_students)
+                high_count = len(high_students)
                 
+                zero_ratio = (zero_count / total_students) * 100 if total_students else 0
+                high_ratio = (high_count / total_students) * 100 if total_students else 0
+                avg_completion_ratio = (df['출석'].mean() / total_lectures) * 100
+                
+                # --- 📈 스마트 그래프 처리 ---
                 if os.path.exists(history_path):
                     hist_df = pd.read_csv(history_path)
                     st.markdown("<h4 class='sub-title'>📈 평균 수강률 업데이트 추이</h4>", unsafe_allow_html=True)
                     
-                    chart_data = hist_df.set_index('업데이트 일시')[['평균수강률(%)']]
-                    if len(hist_df) == 1:
-                        st.bar_chart(chart_data)
-                        st.caption("📌 아직 기록이 1건뿐이라 막대그래프로 표시됩니다. 다음 업데이트부터 꺾은선으로 연결됩니다!")
-                    else:
+                    if len(hist_df) >= 2:
+                        chart_data = hist_df.set_index('업데이트 일시')[['평균수강률(%)']]
                         st.line_chart(chart_data)
+                    else:
+                        st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 주에 한 번 더 엑셀 파일을 올리시면 여기에 꺾은선 추이 그래프가 그려집니다!")
                     st.divider()
                 
+                # --- KPI 지표 카드 ---
                 col1, col2, col3 = st.columns(3)
                 col1.metric("현재 전체 평균 수강률", f"{avg_completion_ratio:.1f}%")
-                col2.metric("목표(90%) 달성 학생", f"{achieved_ratio:.1f}%", f"{achieved_count}명 / {threshold_90}강 이상")
-                col3.metric("미수강 학생 (0강)", f"{zero_ratio:.1f}%", f"{zero_count}명 (밀착관리 필요)", delta_color="inverse")
+                col2.metric("안정권 (2/3 이상) 학생", f"{high_ratio:.1f}%", f"{high_count}명 / {threshold_2_3}강 이상")
+                col3.metric("전면 미수강 학생 (0강)", f"{zero_ratio:.1f}%", f"{zero_count}명 (밀착관리 필요)", delta_color="inverse")
                 
                 st.divider()
                 
+                # --- 📋 명단 탭 3개로 분리 ---
                 display_cols = ['순번', '이름', '학번', '학과', '출석']
                 existing_cols = [col for col in display_cols if col in df.columns]
                 
-                tab_zero, tab_under = st.tabs(["🆘 전면 미수강 (즉시 연락)", "⚠️ 90% 미달성"])
+                tab_zero, tab_mid, tab_high = st.tabs([
+                    f"🆘 전면 미수강 (0강) - {zero_count}명", 
+                    f"⚠️ 일부 수강 (1강 ~ 2/3 미만) - {mid_count}명", 
+                    f"✅ 안정권 (2/3 이상) - {high_count}명"
+                ])
                 
                 with tab_zero:
                     if zero_count > 0:
@@ -248,16 +241,23 @@ for i, subject in enumerate(subjects):
                         styled_zero = df_zero.style.apply(style_attendance, threshold_2_3=threshold_2_3, subset=['출석'])
                         st.dataframe(styled_zero, use_container_width=True)
                     else:
-                        st.success("대단합니다! 모든 학생이 수강을 시작했습니다.")
+                        st.success("대단합니다! 전면 미수강 학생이 없습니다.")
                         
-                with tab_under:
-                    under_target_students = df[(df['출석'] > 0) & (df['출석'] < threshold_90)]
-                    if len(under_target_students) > 0:
-                        df_under = under_target_students[existing_cols].reset_index(drop=True)
-                        styled_under = df_under.style.apply(style_attendance, threshold_2_3=threshold_2_3, subset=['출석'])
-                        st.dataframe(styled_under, use_container_width=True)
+                with tab_mid:
+                    if mid_count > 0:
+                        df_mid = mid_students[existing_cols].reset_index(drop=True)
+                        styled_mid = df_mid.style.apply(style_attendance, threshold_2_3=threshold_2_3, subset=['출석'])
+                        st.dataframe(styled_mid, use_container_width=True)
                     else:
-                        st.success("🎉 해당하는 모든 학생이 목표 수강률을 달성했습니다!")
+                        st.success("모든 수강생이 안정권에 진입했습니다!")
+                        
+                with tab_high:
+                    if high_count > 0:
+                        df_high = high_students[existing_cols].reset_index(drop=True)
+                        styled_high = df_high.style.apply(style_attendance, threshold_2_3=threshold_2_3, subset=['출석'])
+                        st.dataframe(styled_high, use_container_width=True)
+                    else:
+                        st.info("아직 안정권(2/3 이상 수강)에 도달한 학생이 없습니다.")
             else:
                 st.error("데이터 오류: 업로드된 파일에 '출석' 열이 없습니다.")
                 
@@ -265,13 +265,13 @@ for i, subject in enumerate(subjects):
             st.info("📂 자료가 없어요... 담당 어시스턴트 및 멘토님이 데이터를 업로드해주세요!")
             col1, col2, col3 = st.columns(3)
             col1.metric("현재 전체 평균 수강률", "- %")
-            col2.metric("목표(90%) 달성 학생", "- %", "- 명")
-            col3.metric("미수강 학생 (0강)", "- %", "- 명")
+            col2.metric("안정권 (2/3 이상) 학생", "- %", "- 명")
+            col3.metric("전면 미수강 학생 (0강)", "- %", "- 명")
 
-# --- 4️⃣ 하단 저작권 푸터 (Footer) ---
+# --- 4️⃣ 하단 저작권 푸터 (못생긴 선 제거!) ---
 st.markdown("""
-<br><br><br>
-<div style='text-align: center; padding: 20px; border-top: 1px solid #eaeaea; color: #888; font-size: 14px;'>
+<br><br>
+<div style='text-align: center; padding: 20px; color: #888; font-size: 14px;'>
     &copy; 2026 All rights reserved. <b>한양대학교 ERICA 기초과학교육센터</b>
 </div>
 """, unsafe_allow_html=True)
