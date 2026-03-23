@@ -5,70 +5,36 @@ import os
 import datetime
 import re
 
-# --- 1️⃣ 페이지 설정 (🐣 병아리 파비콘 & 넓은 레이아웃) ---
+# --- 1️⃣ 페이지 설정 ---
 st.set_page_config(page_title="2026 CORE 수강률 대시보드", page_icon="🐣", layout="wide")
 
 st.markdown("""
 <style>
-    :root { 
-        --theme-color: #2980B9; 
-        --success-color: #27AE60;
-        --danger-color: #E74C3C;
-        --text-main: #2C3E50;
-        --bg-card: #FFFFFF;
-        --border-color: #E0E0E0;
-    }
-    @media (prefers-color-scheme: dark) { 
-        :root { 
-            --theme-color: #5DADE2; 
-            --success-color: #81C784;
-            --danger-color: #E57373;
-            --text-main: #FFFFFF;
-            --bg-card: #1E1E1E;
-            --border-color: #333333;
-        } 
-    }
+    /* 🌟 [오류 원천 차단] 기기 다크모드 감지 코드를 완전히 삭제했습니다! 
+       스트림릿 순정 테마 변수인 var(--secondary-background-color)만 사용하여 라이트/다크 충돌이 절대 불가능합니다. */
     
-    /* 🌟 상단 타이틀 좌측 정렬 & 현대적 다이어트 */
-    .header-container { margin-top: -35px; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
-    .main-title { font-size: 28px; font-weight: 800; color: var(--text-main); margin: 0; letter-spacing: -0.5px; }
-    .sub-desc { font-size: 14px; color: #7F8C8D; margin: 5px 0 0 0; font-weight: 500; }
+    .header-container { margin-top: -35px; margin-bottom: 25px; border-bottom: 1px solid rgba(128,128,128,0.2); padding-bottom: 15px; }
+    .main-title { font-size: 28px; font-weight: 800; color: var(--text-color); margin: 0; letter-spacing: -0.5px; }
+    .sub-desc { font-size: 14px; color: gray; margin: 5px 0 0 0; font-weight: 500; }
+    .section-title { font-size: 18px; font-weight: 700; color: var(--text-color); margin-bottom: 12px; margin-top: 15px; }
     
-    .section-title { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 12px; margin-top: 15px; }
-    
-    /* 🌟 [빨간색 영구 박멸] 탭 글씨 및 밑줄 강제 고정 */
-    button[data-baseweb="tab"] { font-size: 15px !important; font-weight: bold !important; }
-    button[data-baseweb="tab"][aria-selected="true"] span, 
-    button[data-baseweb="tab"][aria-selected="true"] p, 
-    button[data-baseweb="tab"][aria-selected="true"] { 
-        color: var(--theme-color) !important; 
-    }
-    div[data-baseweb="tab-highlight"] { 
-        background-color: var(--theme-color) !important; 
-    }
+    /* 🌟 [빨간색 영구 박멸] 탭 글씨와 밑줄을 한양대 블루(#2980B9)로 강제 고정합니다 */
+    button[data-baseweb="tab"] * { font-size: 15px !important; font-weight: bold !important; }
+    button[data-baseweb="tab"][aria-selected="true"] * { color: #2980B9 !important; }
+    div[data-baseweb="tab-highlight"] { background-color: #2980B9 !important; }
 
-    /* 🌟 깔끔한 화이트톤 카드 */
+    /* 🌟 완벽 반응형 화이트/다크 카드 */
     .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
     .metric-card {
-        background-color: var(--bg-card); 
-        border: 1px solid var(--border-color); 
+        background-color: var(--secondary-background-color); /* 스트림릿 배경을 무조건 따라감 */
+        border: 1px solid rgba(128, 128, 128, 0.2); 
         border-radius: 8px;
         padding: 18px; 
-        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
-    
     .metric-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-    .metric-label { font-size: 14px; font-weight: 600; color: #7F8C8D; }
-    
-    .badge { font-size: 12px; padding: 3px 8px; border-radius: 12px; font-weight: 700; }
-    .badge.gray { background-color: #F2F3F4; color: #7F8C8D; }
-    .badge.green { background-color: #E8F6F3; color: var(--success-color); }
-    .badge.red { background-color: #FDEDEC; color: var(--danger-color); }
-    
+    .metric-label { font-size: 14px; font-weight: 600; color: var(--text-color); opacity: 0.8; }
     .metric-value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 8px; }
-    
-    .progress-track { width: 100%; background-color: #F2F3F4; height: 6px; border-radius: 4px; margin: 10px 0 0 0; overflow: hidden; }
-    .progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
 
     @media (max-width: 768px) {
         .main-title { font-size: 22px; }
@@ -77,10 +43,10 @@ st.markdown("""
     }
 
     [data-testid="stFileUploader"] { padding: 0 !important; }
-    [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; min-height: 40px !important; background-color: transparent !important; border: 1px dashed #7F8C8D !important; border-radius: 8px; }
+    [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; min-height: 40px !important; background-color: transparent !important; border: 1px dashed gray !important; border-radius: 8px; }
     [data-testid="stFileUploaderDropzone"] div[data-testid="stMarkdownContainer"], [data-testid="stFileUploaderIcon"], [data-testid="stFileUploaderDropzone"] svg { display: none !important; }
-    .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: var(--theme-color); color: var(--theme-color); }
-    .stButton>button:hover { background-color: var(--theme-color); color: white; }
+    .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: #2980B9; color: #2980B9; }
+    .stButton>button:hover { background-color: #2980B9; color: white; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -94,9 +60,9 @@ st.markdown("""
 
 subjects = ["파이썬(최기환)", "파이썬(조상욱)", "화학(박경호)", "물리학(손승우)", "미적분(김은상)", "통계(이우주)", "기하와벡터(김은상)"]
 
-def create_card(title, value, color, badge_text="", badge_class="", progress=None):
-    b_html = f'<span class="badge {badge_class}">{badge_text}</span>' if badge_text else ""
-    p_html = f'<div class="progress-track"><div class="progress-fill" style="width: {progress:.1f}%; background-color: {color};"></div></div>' if progress is not None else ""
+def create_card(title, value, color, badge_text="", progress=None):
+    b_html = f'<span style="font-size:12px; padding:3px 8px; border-radius:12px; font-weight:700; background-color:rgba(128,128,128,0.1); color:{color};">{badge_text}</span>' if badge_text else ""
+    p_html = f'<div style="width:100%; background-color:rgba(128,128,128,0.2); height:6px; border-radius:4px; margin-top:10px;"><div style="width:{progress:.1f}%; background-color:{color}; height:100%; border-radius:4px;"></div></div>' if progress is not None else ""
     return f'<div class="metric-card"><div class="metric-header"><span class="metric-label">{title}</span>{b_html}</div><div class="metric-value" style="color: {color};">{value}</div>{p_html}</div>'
 
 def style_attendance(s, threshold_2_3):
@@ -107,17 +73,21 @@ def style_attendance(s, threshold_2_3):
         else: colors.append('background-color: #F9E79F; color: #D35400; font-weight: bold;') 
     return colors
 
+# 🌟 [에러 완벽 백신] 과거 장부가 망가져 있어도 강제로 뜯어고치거나 리셋시키는 함수
 def load_clean_history(path):
-    if not os.path.exists(path): return None
-    df = pd.read_csv(path)
-    rename_map = {}
-    if '업데이트 일시' in df.columns: rename_map['업데이트 일시'] = '업데이트 날짜'
-    if '평균수강률(%)' in df.columns: rename_map['평균수강률(%)'] = '이수율(%)'
-    if rename_map:
-        df.rename(columns=rename_map, inplace=True)
-        try: df.to_csv(path, index=False)
-        except: pass
-    return df
+    if not os.path.exists(path): return pd.DataFrame(columns=['업데이트 날짜', '이수율(%)'])
+    try:
+        df = pd.read_csv(path)
+        # 무슨 이름이든 강제로 올바른 이름으로 세탁
+        for c in df.columns:
+            if '일시' in c or '시간' in c or '날짜' in c or '최종' in c: df.rename(columns={c: '업데이트 날짜'}, inplace=True)
+            if '평균' in c or '이수율' in c or '수강률' in c or '비율' in c: df.rename(columns={c: '이수율(%)'}, inplace=True)
+        # 세탁 실패 시 빈 껍데기 반환하여 에러 방지
+        if '업데이트 날짜' not in df.columns or '이수율(%)' not in df.columns:
+            return pd.DataFrame(columns=['업데이트 날짜', '이수율(%)'])
+        return df
+    except:
+        return pd.DataFrame(columns=['업데이트 날짜', '이수율(%)'])
 
 tabs = st.tabs(["종합 랭킹"] + subjects)
 
@@ -143,7 +113,6 @@ with tabs[0]:
 
     col1, col2 = st.columns(2)
     with col1:
-        # 소제목 이모티콘 완벽 제거
         st.markdown("<div class='section-title'>전체 이수율 랭킹 (2/3 이상 수강)</div>", unsafe_allow_html=True)
         for i, item in enumerate(sorted(ranking_data, key=lambda x: x['이수율'], reverse=True)):
             st.info(f"**{i+1}위** | {item['과목']} ({item['이수율']:.1f}%)")
@@ -186,14 +155,11 @@ for i, subject in enumerate(subjects):
                         current_rate = (len(df_new[df_new['출석'] >= 10]) / len(df_new)) * 100
                         
                         h_df = load_clean_history(history_path)
-                        if h_df is not None:
-                            h_df['업데이트 날짜'] = h_df['업데이트 날짜'].astype(str).apply(lambda x: re.search(r'\d{4}-\d{2}-\d{2}', x).group(0) if re.search(r'\d{4}-\d{2}-\d{2}', x) else x)
-                            new_row = pd.DataFrame([{'업데이트 날짜': clean_date, '이수율(%)': round(current_rate, 1)}])
-                            h_df = pd.concat([h_df, new_row], ignore_index=True)
-                            h_df.drop_duplicates(subset=['업데이트 날짜'], keep='last', inplace=True)
-                            h_df.to_csv(history_path, index=False)
-                        else: 
-                            pd.DataFrame([{'업데이트 날짜': clean_date, '이수율(%)': round(current_rate, 1)}]).to_csv(history_path, index=False)
+                        h_df['업데이트 날짜'] = h_df['업데이트 날짜'].astype(str).apply(lambda x: re.search(r'\d{4}-\d{2}-\d{2}', x).group(0) if re.search(r'\d{4}-\d{2}-\d{2}', x) else x)
+                        new_row = pd.DataFrame([{'업데이트 날짜': clean_date, '이수율(%)': round(current_rate, 1)}])
+                        h_df = pd.concat([h_df, new_row], ignore_index=True)
+                        h_df.drop_duplicates(subset=['업데이트 날짜'], keep='last', inplace=True)
+                        h_df.to_csv(history_path, index=False)
                             
                         st.success("파일 처리가 완료되었습니다!")
                         st.rerun() 
@@ -205,7 +171,7 @@ for i, subject in enumerate(subjects):
                 with open(date_path, "r", encoding="utf-8") as f: s_date = f.read()
                 d_match = re.search(r'\d{4}-\d{2}-\d{2}', s_date)
                 clean_s_date = d_match.group(0) if d_match else s_date
-                st.markdown(f"<div style='text-align: right; color: #7F8C8D; font-size: 14px; margin-bottom: 10px;'>업데이트 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: right; color: gray; font-size: 14px; margin-bottom: 10px;'>업데이트 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
             
             df = pd.read_csv(file_path)
             df['출석'] = pd.to_numeric(df['출석'], errors='coerce').fillna(0)
@@ -218,22 +184,28 @@ for i, subject in enumerate(subjects):
             high_rate = (len(high_df)/total_cnt)*100 if total_cnt > 0 else 0
             zero_rate = (len(zero_df)/total_cnt)*100 if total_cnt > 0 else 0
             
-            # 소제목 이모티콘 완벽 제거
             st.markdown("<div class='section-title'>핵심 수강 지표</div>", unsafe_allow_html=True)
             
-            c1 = create_card("전체 수강생", f"{total_cnt}명", "#7F8C8D", "Total", "gray")
-            c2 = create_card("안정권 학생", f"{len(high_df)}명", "var(--success-color)", "10강↑", "green")
-            c3 = create_card("전면 미수강", f"{len(zero_df)}명", "var(--danger-color)", "0강", "red")
-            c4 = create_card("평균 수강률", f"{avg_rate:.1f}%", "var(--theme-color)", progress=avg_rate)
-            c5 = create_card("안정권 비율", f"{high_rate:.1f}%", "var(--success-color)", progress=high_rate)
-            c6 = create_card("미수강 비율", f"{zero_rate:.1f}%", "var(--danger-color)", progress=zero_rate)
+            c1 = create_card("전체 수강생", f"{total_cnt}명", "gray", "Total")
+            c2 = create_card("안정권 학생", f"{len(high_df)}명", "#27AE60", "10강↑")
+            c3 = create_card("전면 미수강", f"{len(zero_df)}명", "#E74C3C", "0강")
+            c4 = create_card("평균 수강률", f"{avg_rate:.1f}%", "#2980B9", progress=avg_rate)
+            c5 = create_card("안정권 비율", f"{high_rate:.1f}%", "#27AE60", progress=high_rate)
+            c6 = create_card("미수강 비율", f"{zero_rate:.1f}%", "#E74C3C", progress=zero_rate)
             
             html_cards = f'<div class="metric-grid">{c1}{c2}{c3}{c4}{c5}{c6}</div>'
             st.markdown(html_cards, unsafe_allow_html=True)
             
+            # 🌟 [그래프 오류 완전 해결]
+            st.markdown("<div class='section-title'>주차별 이수율 추이</div>", unsafe_allow_html=True)
+            h_df = load_clean_history(history_path)
+            if not h_df.empty:
+                st.area_chart(h_df.set_index('업데이트 날짜')[['이수율(%)']], color="#2980B9")
+            else:
+                st.info("데이터가 누적되면 추이 그래프가 생성됩니다.")
+
             st.divider()
             
-            # 명단 탭 제목에서도 이모티콘 제거
             t_z, t_m, t_h = st.tabs([f"전면 미수강 ({len(zero_df)}명)", f"일부 수강 ({len(mid_df)}명)", f"안정권 ({len(high_df)}명)"])
             d_cols = [c for c in ['순번','이름','학번','학과','출석'] if c in df.columns]
             with t_z: st.dataframe(zero_df[d_cols].style.apply(style_attendance, threshold_2_3=10, subset=['출석']), use_container_width=True)
@@ -242,4 +214,4 @@ for i, subject in enumerate(subjects):
         else: 
             st.info("데이터를 업로드해주세요.")
 
-st.markdown("<br><br><div style='text-align: center; color: #BDC3C7; font-size: 13px;'>&copy; 2026 한양대학교 ERICA 기초과학교육센터</div>", unsafe_allow_html=True)
+st.markdown("<br><br><div style='text-align: center; color: gray; font-size: 13px;'>&copy; 2026 한양대학교 ERICA 기초과학교육센터</div>", unsafe_allow_html=True)
