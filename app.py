@@ -11,6 +11,7 @@ HYU_BLUE = "#15397C"
 
 st.markdown(f"""
 <style>
+    /* 탭(메뉴) 스타일링 */
     .stTabs [data-baseweb="tab"] {{
         font-size: 16px;
         font-weight: bold;
@@ -23,6 +24,27 @@ st.markdown(f"""
     }}
     .stTabs [data-baseweb="tab"]:hover {{
         color: {HYU_BLUE} !important;
+    }}
+    
+    /* 🌟 [핵심 업데이트] 뚱뚱한 파일 업로더를 얇고 슬림하게 압축 */
+    [data-testid="stFileUploaderDropzone"] {{
+        min-height: 20px !important;
+        padding: 5px 15px !important;
+        border-radius: 8px !important;
+    }}
+    [data-testid="stFileUploaderDropzone"] div {{
+        padding: 0px !important;
+        font-size: 14px !important;
+    }}
+    [data-testid="stFileUploaderDropzone"] svg {{
+        display: none !important; /* 커다란 구름 아이콘 삭제 */
+    }}
+    [data-testid="stFileUploaderDropzone"] small {{
+        display: none !important; /* 'Limit 200MB' 같은 불필요한 작은 글씨 삭제 */
+    }}
+    [data-testid="stFileUploaderDropzone"] button {{
+        padding: 0px 10px !important;
+        min-height: 30px !important;
     }}
 </style>
 """, unsafe_allow_html=True)
@@ -108,7 +130,8 @@ for i, subject in enumerate(subjects):
         date_path = f"date_{subject}.txt"
         history_path = f"history_{subject}.csv"
         
-        uploaded_file = st.file_uploader(f"[{subject}] 최신 LMS 엑셀 파일(.xlsx) 업로드", type=['xlsx'], key=f"upload_{subject}")
+        # 슬림해진 파일 업로더
+        uploaded_file = st.file_uploader(f"[{subject}] 최신 LMS 엑셀 파일(.xlsx)을 업로드해 주세요", type=['xlsx'], key=f"upload_{subject}")
         
         if uploaded_file is not None:
             try:
@@ -142,7 +165,7 @@ for i, subject in enumerate(subjects):
                     else:
                         new_history.to_csv(history_path, index=False)
                 
-                st.success(f"✅ {subject} 데이터가 업데이트되었습니다! 그래프와 랭킹에 즉시 반영됩니다.")
+                st.success(f"✅ {subject} 데이터가 업데이트되었습니다! 종합 랭킹에 즉시 반영됩니다.")
             except Exception as e:
                 st.error(f"엑셀 파일을 읽는 중 오류가 발생했습니다: {e}")
 
@@ -175,14 +198,19 @@ for i, subject in enumerate(subjects):
                 avg_attendance_count = df['출석'].mean()
                 avg_completion_ratio = (avg_attendance_count / total_lectures) * 100
                 
-                # --- 🌟 [수정된 부분] 수강률 추이 꺾은선 그래프 ---
+                # --- 🌟 [수정] 수강률 추이 그래프 스마트 처리 ---
                 if os.path.exists(history_path):
                     hist_df = pd.read_csv(history_path)
                     st.markdown(f"<h4 style='color: {HYU_BLUE};'>📈 평균 수강률 업데이트 추이</h4>", unsafe_allow_html=True)
                     
-                    # 💡 오직 '평균수강률(%)' 열만 추출해서 그리도록 강력하게 통제합니다.
                     chart_data = hist_df.set_index('업데이트 일시')[['평균수강률(%)']]
-                    st.line_chart(chart_data)
+                    
+                    # 기록이 1건뿐이면 막대그래프, 2건 이상이면 꺾은선 그래프로 자동 전환
+                    if len(hist_df) == 1:
+                        st.bar_chart(chart_data)
+                        st.caption("📌 아직 기록이 1건뿐이라 막대그래프로 표시됩니다. 다음 업데이트부터 꺾은선으로 연결됩니다!")
+                    else:
+                        st.line_chart(chart_data)
                     st.divider()
                 
                 col1, col2, col3 = st.columns(3)
