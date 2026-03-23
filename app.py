@@ -94,9 +94,14 @@ with tabs[0]:
                     df['출석'] = pd.to_numeric(df['출석'], errors='coerce').fillna(0)
                     total = len(df)
                     if total > 0:
-                        avg_comp = (df['출석'].mean() / 15) * 100
-                        zero_r = (len(df[df['출석'] == 0]) / total) * 100
-                        ranking_data.append({'과목': subj, '평균수강률': avg_comp, '미수강비율': zero_r})
+                        # 🌟 [수정된 랭킹 계산 로직] 2/3 이상 수강자 비율로 계산
+                        threshold_2_3 = int(np.ceil(15 * (2/3))) # 15강 기준 10강
+                        high_count = len(df[df['출석'] >= threshold_2_3])
+                        
+                        completion_rate = (high_count / total) * 100 # 이수율
+                        zero_r = (len(df[df['출석'] == 0]) / total) * 100 # 미수강비율
+                        
+                        ranking_data.append({'과목': subj, '이수율': completion_rate, '미수강비율': zero_r})
             except:
                 pass
 
@@ -104,15 +109,16 @@ with tabs[0]:
     col1, col2 = st.columns(2)
     
     with col1:
-        st.markdown("<h3 class='sub-title'>📈 전체 평균 수강률 랭킹 (이수율 순)</h3>", unsafe_allow_html=True)
-        sorted_by_comp = sorted(ranking_data, key=lambda x: x['평균수강률'], reverse=True)
+        # 🌟 제목 수정
+        st.markdown("<h3 class='sub-title'>📈 전체 이수율 랭킹 (2/3 이상 수강)</h3>", unsafe_allow_html=True)
+        sorted_by_comp = sorted(ranking_data, key=lambda x: x['이수율'], reverse=True)
         for i in range(len(subjects)):
             if i < len(sorted_by_comp):
                 item = sorted_by_comp[i]
                 if i == 0:
-                    st.success(f"**{i+1}위** | 🥇 {item['과목']} ({item['평균수강률']:.1f}%)")
+                    st.success(f"**{i+1}위** | 🥇 {item['과목']} ({item['이수율']:.1f}%)")
                 else:
-                    st.info(f"**{i+1}위** | {item['과목']} ({item['평균수강률']:.1f}%)")
+                    st.info(f"**{i+1}위** | {item['과목']} ({item['이수율']:.1f}%)")
             else:
                 st.markdown(f"<div style='padding: 12px; border: 2px dashed #ccc; border-radius: 8px; color: #888; margin-bottom: 12px; background-color: #fafafa;'><b>{i+1}위</b> | ⬜ 아직 자료가 없어요</div>", unsafe_allow_html=True)
                 
@@ -189,10 +195,9 @@ for i, subject in enumerate(subjects):
                 total_students = len(df)
                 total_lectures = 15
                 
-                # 📌 달성 기준값 
-                threshold_2_3 = int(np.ceil(total_lectures * (2/3))) # 15강 기준 10강
+                threshold_2_3 = int(np.ceil(total_lectures * (2/3)))
+                threshold_90 = int(np.ceil(total_lectures * 0.90))
                 
-                # 📌 3단계 분류
                 zero_students = df[df['출석'] == 0]
                 mid_students = df[(df['출석'] > 0) & (df['출석'] < threshold_2_3)]
                 high_students = df[df['출석'] >= threshold_2_3]
@@ -205,7 +210,6 @@ for i, subject in enumerate(subjects):
                 high_ratio = (high_count / total_students) * 100 if total_students else 0
                 avg_completion_ratio = (df['출석'].mean() / total_lectures) * 100
                 
-                # --- 📈 스마트 그래프 처리 ---
                 if os.path.exists(history_path):
                     hist_df = pd.read_csv(history_path)
                     st.markdown("<h4 class='sub-title'>📈 평균 수강률 업데이트 추이</h4>", unsafe_allow_html=True)
@@ -217,7 +221,6 @@ for i, subject in enumerate(subjects):
                         st.info("📌 첫 번째 데이터가 저장되었습니다. 다음 주에 한 번 더 엑셀 파일을 올리시면 여기에 꺾은선 추이 그래프가 그려집니다!")
                     st.divider()
                 
-                # --- KPI 지표 카드 ---
                 col1, col2, col3 = st.columns(3)
                 col1.metric("현재 전체 평균 수강률", f"{avg_completion_ratio:.1f}%")
                 col2.metric("안정권 (2/3 이상) 학생", f"{high_ratio:.1f}%", f"{high_count}명 / {threshold_2_3}강 이상")
@@ -225,7 +228,6 @@ for i, subject in enumerate(subjects):
                 
                 st.divider()
                 
-                # --- 📋 명단 탭 3개로 분리 ---
                 display_cols = ['순번', '이름', '학번', '학과', '출석']
                 existing_cols = [col for col in display_cols if col in df.columns]
                 
@@ -268,7 +270,7 @@ for i, subject in enumerate(subjects):
             col2.metric("안정권 (2/3 이상) 학생", "- %", "- 명")
             col3.metric("전면 미수강 학생 (0강)", "- %", "- 명")
 
-# --- 4️⃣ 하단 저작권 푸터 (못생긴 선 제거!) ---
+# --- 4️⃣ 하단 저작권 푸터 ---
 st.markdown("""
 <br><br>
 <div style='text-align: center; padding: 20px; color: #888; font-size: 14px;'>
