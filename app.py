@@ -49,25 +49,22 @@ st.markdown("""
     .metric-card {
         background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px;
         padding: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.02);
-        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 부드러운 애니메이션 */
+        transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     }
     .metric-card:hover {
-        transform: translateY(-4px); /* 마우스 올리면 위로 살짝 뜸 */
+        transform: translateY(-4px); 
         box-shadow: 0 8px 15px var(--hover-shadow); border-color: var(--theme-color);
     }
     
-    /* 카드 내부 타이포그래피 및 배지 */
     .metric-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
     .metric-label { font-size: 14px; color: var(--text-sub); font-weight: 700; letter-spacing: -0.3px; }
     .badge { font-size: 11px; padding: 3px 8px; border-radius: 12px; background-color: var(--badge-bg); color: var(--theme-color); font-weight: 600; }
     .metric-value { font-size: 28px; font-weight: 900; color: var(--text-main); line-height: 1.1; margin-bottom: 5px; }
     .metric-desc { font-size: 12px; color: var(--text-sub); margin-top: 8px; font-weight: 500; }
     
-    /* 🌟 미니 프로그레스 바 (비율 시각화) */
     .progress-track { width: 100%; background-color: var(--progress-bg); height: 6px; border-radius: 4px; margin: 10px 0; overflow: hidden; }
     .progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease-in-out; }
 
-    /* 모바일 반응형 */
     @media (max-width: 768px) {
         .main-title { font-size: 24px !important; word-break: keep-all; }
         .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
@@ -90,24 +87,11 @@ st.divider()
 
 subjects = ["파이썬(최기환)", "파이썬(조상욱)", "화학(박경호)", "물리학(손승우)", "미적분(김은상)", "통계(이우주)", "기하와벡터(김은상)"]
 
-# 🌟 파이썬으로 찍어내는 세련된 카드 UI 생성기
+# 🌟 [오류 해결] 스트림릿이 헷갈리지 않도록 모든 HTML을 줄바꿈 없이 한 줄로 압축!
 def create_card(icon, title, value, desc, badge="", progress=None, color="var(--theme-color)"):
     badge_html = f'<span class="badge">{badge}</span>' if badge else ""
-    progress_html = ""
-    if progress is not None:
-        progress_html = f'<div class="progress-track"><div class="progress-fill" style="width: {progress}%; background-color: {color};"></div></div>'
-    
-    return f"""
-    <div class="metric-card">
-        <div class="metric-header">
-            <span class="metric-label">{icon} {title}</span>
-            {badge_html}
-        </div>
-        <div class="metric-value" style="color: {color};">{value}</div>
-        {progress_html}
-        <div class="metric-desc">{desc}</div>
-    </div>
-    """
+    progress_html = f'<div class="progress-track"><div class="progress-fill" style="width: {progress:.1f}%; background-color: {color};"></div></div>' if progress is not None else ""
+    return f'<div class="metric-card"><div class="metric-header"><span class="metric-label">{icon} {title}</span>{badge_html}</div><div class="metric-value" style="color: {color};">{value}</div>{progress_html}<div class="metric-desc">{desc}</div></div>'
 
 def style_attendance(s, threshold_2_3):
     colors = []
@@ -230,18 +214,15 @@ for i, subject in enumerate(subjects):
             
             st.markdown("<div class='sub-title'>📊 핵심 수강 지표</div>", unsafe_allow_html=True)
             
-            # 🌟 하이엔드 카드 렌더링
-            html_cards = f"""
-            <div class="metric-grid">
-                {create_card("👥", "전체 수강생", f"{total_cnt}명", "이번 학기 등록 인원", "Total", color="var(--text-main)")}
-                {create_card("✅", "안정권 학생", f"{len(high_df)}명", "10강 이상 수강 완료", "10강↑", color="var(--success-color)")}
-                {create_card("🚨", "전면 미수강", f"{len(zero_df)}명", "수강 이력 없음 (밀착관리)", "0강", color="var(--danger-color)")}
-                
-                {create_card("📊", "평균 수강률", f"{avg_rate:.1f}%", "전체 출석 ÷ (인원×15강)", progress=avg_rate, color="var(--theme-color)")}
-                {create_card("🎯", "안정권 비율", f"{high_rate:.1f}%", "안정권 학생 ÷ 전체 수강생", progress=high_rate, color="var(--success-color)")}
-                {create_card("⚠️", "미수강 비율", f"{zero_rate:.1f}%", "미수강 학생 ÷ 전체 수강생", progress=zero_rate, color="var(--danger-color)")}
-            </div>
-            """
+            # 🌟 [오류 박멸] 모든 카드를 한 줄의 문자열로 묶어서 HTML 렌더링
+            c1 = create_card("👥", "전체 수강생", f"{total_cnt}명", "이번 학기 등록 인원", "Total", color="var(--text-main)")
+            c2 = create_card("✅", "안정권 학생", f"{len(high_df)}명", "10강 이상 수강 완료", "10강↑", color="var(--success-color)")
+            c3 = create_card("🚨", "전면 미수강", f"{len(zero_df)}명", "수강 이력 없음 (밀착관리)", "0강", color="var(--danger-color)")
+            c4 = create_card("📊", "평균 수강률", f"{avg_rate:.1f}%", "전체 출석 ÷ (인원×15강)", progress=avg_rate, color="var(--theme-color)")
+            c5 = create_card("🎯", "안정권 비율", f"{high_rate:.1f}%", "안정권 학생 ÷ 전체 수강생", progress=high_rate, color="var(--success-color)")
+            c6 = create_card("⚠️", "미수강 비율", f"{zero_rate:.1f}%", "미수강 학생 ÷ 전체 수강생", progress=zero_rate, color="var(--danger-color)")
+            
+            html_cards = f'<div class="metric-grid">{c1}{c2}{c3}{c4}{c5}{c6}</div>'
             st.markdown(html_cards, unsafe_allow_html=True)
             
             st.divider()
