@@ -5,87 +5,102 @@ import os
 import datetime
 import re
 
-# --- 1️⃣ 페이지 설정 (🌟 파비콘 변경 & 넓은 레이아웃) ---
-# page_icon을 지정하면 브라우저 탭의 기본 종이배 아이콘이 바뀝니다!
-st.set_page_config(page_title="CORE 수강률 관제센터", page_icon="🏫", layout="wide")
+# --- 1️⃣ 페이지 설정 (🐣 병아리 파비콘 & 넓은 레이아웃) ---
+st.set_page_config(page_title="2026 CORE 수강률 대시보드", page_icon="🐣", layout="wide")
 
 st.markdown("""
 <style>
-    /* 🌟 테마 충돌 완벽 해결! 기기 설정 무시하고 스트림릿 테마에 자동 동기화 (inherit 활용) */
+    :root { 
+        --theme-color: #2980B9; 
+        --success-color: #27AE60;
+        --danger-color: #E74C3C;
+        --text-main: #2C3E50;
+        --bg-card: #FFFFFF;
+        --border-color: #E0E0E0;
+    }
+    @media (prefers-color-scheme: dark) { 
+        :root { 
+            --theme-color: #5DADE2; 
+            --success-color: #81C784;
+            --danger-color: #E57373;
+            --text-main: #FFFFFF;
+            --bg-card: #1E1E1E;
+            --border-color: #333333;
+        } 
+    }
     
-    /* 🌟 상단 타이틀 영역 다이어트 (여백 최소화) */
-    .main-title { text-align: center; font-weight: 900; color: #15397C; margin-top: -30px; margin-bottom: 0px; letter-spacing: -1px; font-size: 32px; }
-    .sub-desc { text-align: center; color: gray; font-size: 14px; margin-bottom: 10px; font-weight: 500; }
-    .section-title { font-size: 18px; font-weight: 800; color: #15397C; margin-bottom: 10px; border-bottom: 2px solid #15397C; padding-bottom: 5px; display: inline-block; }
+    /* 🌟 상단 타이틀 좌측 정렬 & 현대적 다이어트 */
+    .header-container { margin-top: -35px; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; }
+    .main-title { font-size: 28px; font-weight: 800; color: var(--text-main); margin: 0; letter-spacing: -0.5px; }
+    .sub-desc { font-size: 14px; color: #7F8C8D; margin: 5px 0 0 0; font-weight: 500; }
     
-    .stTabs [data-baseweb="tab"] { font-size: 16px; font-weight: bold; transition: all 0.2s; }
-    .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover { color: #15397C !important; }
-    .stTabs [data-baseweb="tab-highlight"] { background-color: #15397C !important; height: 3px; border-radius: 3px 3px 0 0; }
+    .section-title { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 12px; margin-top: 15px; }
+    
+    .stTabs [data-baseweb="tab"] { font-size: 15px; font-weight: bold; }
+    .stTabs [aria-selected="true"], .stTabs [data-baseweb="tab"]:hover { color: var(--theme-color) !important; }
+    .stTabs [data-baseweb="tab-highlight"] { background-color: var(--theme-color) !important; }
 
-    /* 🌟 [디자인 핵심] 어떤 테마에서도 어울리는 반투명 하이엔드 카드 */
+    /* 🌟 깔끔한 화이트톤 카드 (보내주신 시안 100% 반영) */
     .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
     .metric-card {
-        background-color: rgba(128, 128, 128, 0.03); /* 배경에 아주 옅은 회색만 깔아서 테마 자동 맞춤 */
-        border: 1px solid rgba(128, 128, 128, 0.2); 
+        background-color: var(--bg-card); 
+        border: 1px solid var(--border-color); 
         border-radius: 8px;
         padding: 18px; 
-        box-shadow: 0 2px 5px rgba(0,0,0,0.03);
-        transition: all 0.2s ease-in-out;
-    }
-    .metric-card:hover {
-        transform: translateY(-3px); 
-        box-shadow: 0 6px 12px rgba(0,0,0,0.08); 
-        border-color: #15397C;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
     
-    /* 텍스트 색상을 inherit으로 설정하여 라이트/다크 반전 오류 원천 차단 */
-    .metric-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-    .metric-label { font-size: 14px; font-weight: 700; opacity: 0.8; }
-    .badge { font-size: 11px; padding: 2px 8px; border-radius: 12px; background-color: rgba(128,128,128,0.15); font-weight: 700; margin-left: 5px; }
-    .metric-value { font-size: 26px; font-weight: 900; line-height: 1.1; margin-bottom: 5px; }
-    .metric-desc { font-size: 12px; opacity: 0.6; margin-top: 5px; font-weight: 500; }
+    .metric-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .metric-label { font-size: 14px; font-weight: 600; color: #7F8C8D; }
     
-    /* 미니 프로그레스 바 */
-    .progress-track { width: 100%; background-color: rgba(128,128,128,0.2); height: 6px; border-radius: 4px; margin: 8px 0; overflow: hidden; }
-    .progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease-in-out; }
+    /* 우측 상단 예쁜 배지 */
+    .badge { font-size: 12px; padding: 3px 8px; border-radius: 12px; font-weight: 700; }
+    .badge.gray { background-color: #F2F3F4; color: #7F8C8D; }
+    .badge.green { background-color: #E8F6F3; color: var(--success-color); }
+    .badge.red { background-color: #FDEDEC; color: var(--danger-color); }
+    
+    .metric-value { font-size: 28px; font-weight: 800; line-height: 1; margin-bottom: 8px; }
+    
+    /* 얇고 예쁜 프로그레스 바 */
+    .progress-track { width: 100%; background-color: #F2F3F4; height: 6px; border-radius: 4px; margin: 10px 0 0 0; overflow: hidden; }
+    .progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
 
-    /* 📱 모바일 반응형 완벽 대응 */
     @media (max-width: 768px) {
-        .main-title { font-size: 22px !important; word-break: keep-all; }
+        .main-title { font-size: 22px; }
         .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
-        .metric-card { padding: 15px; }
-        .metric-value { font-size: 20px; }
-        .metric-desc { font-size: 11px; letter-spacing: -0.5px; }
+        .metric-value { font-size: 22px; }
     }
 
     [data-testid="stFileUploader"] { padding: 0 !important; }
-    [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; min-height: 40px !important; background-color: transparent !important; border: 1px dashed #15397C !important; border-radius: 8px; }
+    [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; min-height: 40px !important; background-color: transparent !important; border: 1px dashed #7F8C8D !important; border-radius: 8px; }
     [data-testid="stFileUploaderDropzone"] div[data-testid="stMarkdownContainer"], [data-testid="stFileUploaderIcon"], [data-testid="stFileUploaderDropzone"] svg { display: none !important; }
-    .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: #15397C; color: #15397C; }
-    .stButton>button:hover { background-color: #15397C; color: white; }
+    .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: var(--theme-color); color: var(--theme-color); }
+    .stButton>button:hover { background-color: var(--theme-color); color: white; }
 </style>
 """, unsafe_allow_html=True)
 
-# 🌟 타이틀 영역 (사자 빼고, 여백 줄이고, 전문성 UP)
-st.markdown("<h1 class='main-title'>🏫 2026 CORE 수강률 관제 대시보드</h1>", unsafe_allow_html=True)
-st.markdown("<p class='sub-desc'>한양대학교 ERICA 기초과학교육센터 | 목표 수강률 90% 이상</p>", unsafe_allow_html=True)
-st.markdown("<hr style='margin-top: 0px; margin-bottom: 15px;'>", unsafe_allow_html=True)
+# 🌟 타이틀 영역 (좌측 정렬, 아이콘 삭제, 모던함 강조)
+st.markdown("""
+<div class='header-container'>
+    <h1 class='main-title'>2026 CORE 수강률 대시보드</h1>
+    <p class='sub-desc'>한양대학교 ERICA 기초과학교육센터 | 목표 수강률 90% 이상</p>
+</div>
+""", unsafe_allow_html=True)
 
 subjects = ["파이썬(최기환)", "파이썬(조상욱)", "화학(박경호)", "물리학(손승우)", "미적분(김은상)", "통계(이우주)", "기하와벡터(김은상)"]
 
-# 🌟 [오류 해결] 스트림릿이 헷갈리지 않도록 한 줄로 압축한 카드 렌더링 함수
-def create_card(icon, title, value, desc, badge="", progress=None, color="#15397C"):
-    badge_html = f'<span class="badge">{badge}</span>' if badge else ""
-    progress_html = f'<div class="progress-track"><div class="progress-fill" style="width: {progress:.1f}%; background-color: {color};"></div></div>' if progress is not None else ""
-    # color: inherit를 사용하여 부모 테마의 글자색을 100% 따라가게 함 (시커멓게 변하는 오류 해결)
-    return f'<div class="metric-card"><div class="metric-header"><span class="metric-label" style="color: inherit;">{icon} {title}</span>{badge_html}</div><div class="metric-value" style="color: {color};">{value}</div>{progress_html}<div class="metric-desc" style="color: inherit;">{desc}</div></div>'
+# 🌟 [오류 차단] 완벽한 1줄짜리 HTML 카드 생성기
+def create_card(title, value, color, badge_text="", badge_class="", progress=None):
+    b_html = f'<span class="badge {badge_class}">{badge_text}</span>' if badge_text else ""
+    p_html = f'<div class="progress-track"><div class="progress-fill" style="width: {progress:.1f}%; background-color: {color};"></div></div>' if progress is not None else ""
+    return f'<div class="metric-card"><div class="metric-header"><span class="metric-label">{title}</span>{b_html}</div><div class="metric-value" style="color: {color};">{value}</div>{p_html}</div>'
 
 def style_attendance(s, threshold_2_3):
     colors = []
     for val in s:
-        if val == 0: colors.append('background-color: #FFCDD2; color: #900C3F; font-weight: bold;') 
-        elif val >= threshold_2_3: colors.append('background-color: #4CAF50; color: white; font-weight: bold;') 
-        else: colors.append('background-color: #C8E6C9; color: #1E8449; font-weight: bold;') 
+        if val == 0: colors.append('background-color: #FDEDEC; color: #E74C3C; font-weight: bold;') 
+        elif val >= threshold_2_3: colors.append('background-color: #E8F6F3; color: #27AE60; font-weight: bold;') 
+        else: colors.append('background-color: #F9E79F; color: #D35400; font-weight: bold;') 
     return colors
 
 def load_clean_history(path):
@@ -132,7 +147,7 @@ with tabs[0]:
         for i, item in enumerate(sorted(ranking_data, key=lambda x: x['미수강비율'], reverse=True)):
             st.warning(f"**{i+1}위** | {item['과목']} ({item['미수강비율']:.1f}%)")
 
-    st.markdown("<br><div class='section-title'>🏫 학과별 수강 현황 (전 과목 종합)</div>", unsafe_allow_html=True)
+    st.markdown("<div class='section-title'>🏫 학과별 수강 현황 (전 과목 종합)</div>", unsafe_allow_html=True)
     if all_dept_data:
         combined_dept_df = pd.concat(all_dept_data).dropna(subset=['학과'])
         dept_stats = combined_dept_df.groupby('학과').agg(
@@ -185,7 +200,7 @@ for i, subject in enumerate(subjects):
                 with open(date_path, "r", encoding="utf-8") as f: s_date = f.read()
                 d_match = re.search(r'\d{4}-\d{2}-\d{2}', s_date)
                 clean_s_date = d_match.group(0) if d_match else s_date
-                st.markdown(f"<div style='text-align: right; color: #15397C; font-weight: 800; font-size: 15px; margin-bottom: 20px; letter-spacing: -0.5px;'>🕒 업데이트 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div style='text-align: right; color: #7F8C8D; font-size: 14px; margin-bottom: 10px;'>업데이트 기준일: {clean_s_date}</div>", unsafe_allow_html=True)
             
             df = pd.read_csv(file_path)
             df['출석'] = pd.to_numeric(df['출석'], errors='coerce').fillna(0)
@@ -200,20 +215,20 @@ for i, subject in enumerate(subjects):
             
             st.markdown("<div class='section-title'>📊 핵심 수강 지표</div>", unsafe_allow_html=True)
             
-            # 🌟 라이트/다크모드에서도 완벽하게 색깔이 유지되는 카드 출력
-            c1 = create_card("👥", "전체 수강생", f"{total_cnt}명", "이번 학기 등록 인원", "Total", color="#2C3E50")
-            c2 = create_card("✅", "안정권 학생", f"{len(high_df)}명", "10강 이상 수강 완료", "10강↑", color="#2E7D32")
-            c3 = create_card("🚨", "전면 미수강", f"{len(zero_df)}명", "수강 이력 없음 (밀착관리)", "0강", color="#C62828")
-            c4 = create_card("📊", "평균 수강률", f"{avg_rate:.1f}%", "전체 출석 ÷ (인원×15강)", progress=avg_rate, color="#15397C")
-            c5 = create_card("🎯", "안정권 비율", f"{high_rate:.1f}%", "안정권 학생 ÷ 전체 수강생", progress=high_rate, color="#2E7D32")
-            c6 = create_card("⚠️", "미수강 비율", f"{zero_rate:.1f}%", "미수강 학생 ÷ 전체 수강생", progress=zero_rate, color="#C62828")
+            # 🌟 시안과 100% 일치하는 모던 화이트 카드 (태그 오류 원천 차단)
+            c1 = create_card("전체 수강생", f"{total_cnt}명", "#7F8C8D", "Total", "gray")
+            c2 = create_card("안정권 학생", f"{len(high_df)}명", "var(--success-color)", "10강↑", "green")
+            c3 = create_card("전면 미수강", f"{len(zero_df)}명", "var(--danger-color)", "0강", "red")
+            c4 = create_card("평균 수강률", f"{avg_rate:.1f}%", "var(--theme-color)", progress=avg_rate)
+            c5 = create_card("안정권 비율", f"{high_rate:.1f}%", "var(--success-color)", progress=high_rate)
+            c6 = create_card("미수강 비율", f"{zero_rate:.1f}%", "var(--danger-color)", progress=zero_rate)
             
             html_cards = f'<div class="metric-grid">{c1}{c2}{c3}{c4}{c5}{c6}</div>'
             st.markdown(html_cards, unsafe_allow_html=True)
             
             st.divider()
             
-            t_z, t_m, t_h = st.tabs([f"🚨 전면 미수강({len(zero_df)}명)", f"⚠️ 일부 수강({len(mid_df)}명)", f"✅ 안정권({len(high_df)}명)"])
+            t_z, t_m, t_h = st.tabs([f"🚨 전면 미수강 ({len(zero_df)}명)", f"⚠️ 일부 수강 ({len(mid_df)}명)", f"✅ 안정권 ({len(high_df)}명)"])
             d_cols = [c for c in ['순번','이름','학번','학과','출석'] if c in df.columns]
             with t_z: st.dataframe(zero_df[d_cols].style.apply(style_attendance, threshold_2_3=10, subset=['출석']), use_container_width=True)
             with t_m: st.dataframe(mid_df[d_cols].style.apply(style_attendance, threshold_2_3=10, subset=['출석']), use_container_width=True)
@@ -221,4 +236,4 @@ for i, subject in enumerate(subjects):
         else: 
             st.info("📂 어시스턴트 및 멘토님이 데이터를 업로드해주세요!")
 
-st.markdown("<br><br><div style='text-align: center; color: gray; font-size: 13px; font-weight: 500;'>&copy; 2026 한양대학교 ERICA 기초과학교육센터</div>", unsafe_allow_html=True)
+st.markdown("<br><br><div style='text-align: center; color: #BDC3C7; font-size: 13px;'>&copy; 2026 한양대학교 ERICA 기초과학교육센터</div>", unsafe_allow_html=True)
