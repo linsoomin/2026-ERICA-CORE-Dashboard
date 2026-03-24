@@ -5,12 +5,15 @@ import os
 import datetime
 import re
 
-# --- 1️⃣ 페이지 설정 ---
+# --- 1. Page Configuration ---
 st.set_page_config(page_title="2026 CORE 수강률 대시보드", page_icon="🐣", layout="wide")
 
 st.markdown("""
 <style>
+    /* Global Container */
     .main .block-container { padding-bottom: 1rem !important; }
+    
+    /* Hero Section */
     .hero {
         position: relative; overflow: hidden; padding: 25px 25px; border-radius: 20px;
         background: linear-gradient(135deg, rgba(37,99,235,0.95) 0%, rgba(29,78,216,0.95) 45%, rgba(124,58,237,0.9) 100%);
@@ -24,13 +27,16 @@ st.markdown("""
     .hero-title { color: white !important; font-size: 32px; font-weight: 900; letter-spacing: -1px; margin: 0; line-height: 1.1; }
     .hero-sub { color: rgba(255,255,255,0.9) !important; font-size: 14px; margin-top: 8px; font-weight: 500; }
     
+    /* Section Typography */
     .section-title { font-size: 18px; font-weight: 700; color: var(--text-color); margin-bottom: 12px; margin-top: 15px; }
     .section-desc { font-size: 13px; color: gray; margin-top: -8px; margin-bottom: 14px; }
     
+    /* Tab Styling */
     button[data-baseweb="tab"] * { font-size: 15px !important; font-weight: bold !important; }
     button[data-baseweb="tab"][aria-selected="true"] * { color: #2980B9 !important; }
     div[data-baseweb="tab-highlight"] { background-color: #2980B9 !important; }
 
+    /* Metric Cards */
     .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
     .metric-card {
         background-color: var(--secondary-background-color); border: 1px solid rgba(128, 128, 128, 0.2); 
@@ -44,9 +50,11 @@ st.markdown("""
     .metric-value { font-size: 28px; font-weight: 800; line-height: 1; }
     .metric-sub { font-size: 12px; color: gray; font-weight: 600; }
     
+    /* Progress Bar */
     .progress-wrap { width: 100%; height: 6px; border-radius: 4px; background: rgba(128,128,128,0.15); margin-top: 12px; overflow: hidden; }
     .progress-bar { height: 100%; border-radius: 4px; transition: width 1s ease; }
 
+    /* Rank List */
     .rank-card { background-color: transparent; padding: 5px 0; }
     .rank-item {
         display: flex; align-items: center; justify-content: space-between;
@@ -62,25 +70,31 @@ st.markdown("""
     .rank-desc { font-size: 12px; color: gray; margin-top: 2px; }
     .rank-score { font-size: 18px; font-weight: 900; }
 
+    /* Info Chips */
     .info-band { margin-bottom: 15px; }
     .inline-chip { display: inline-flex; align-items: center; font-size: 13px; padding: 6px 12px; border-radius: 20px; font-weight: 800; margin-right: 8px; margin-bottom: 8px; }
     .chip-blue { background: rgba(41,128,185,0.1); color: #3498DB; }
     .chip-gray { background: rgba(128,128,128,0.1); color: var(--text-color); }
 
+    /* Mobile Optimization - FIXED LABEL WRAPPING */
     @media (max-width: 768px) {
         .hero { padding: 20px 15px; }
         .hero-title { font-size: 19px !important; white-space: nowrap; letter-spacing: -0.5px; }
         .hero-sub { font-size: 11px; }
         .metric-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .metric-card { padding: 15px 12px; } /* Adjust padding for mobile */
+        .metric-label { font-size: 13px; letter-spacing: -0.5px; white-space: nowrap; } /* Prevent label wrap */
         .metric-value { font-size: 22px; }
     }
 
+    /* Footer & UI Components */
     .dashboard-footer { margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(128,128,128,0.1); text-align: center; color: gray; font-size: 12px; font-weight: 500; }
     [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; background-color: transparent !important; border: 1px dashed gray !important; border-radius: 8px; }
     .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: #2980B9; color: #2980B9; }
 </style>
 """, unsafe_allow_html=True)
 
+# --- 2. Hero Section ---
 st.markdown("""
 <div class="hero">
     <div class="hero-badge">🐣 2026 CORE Dashboard</div>
@@ -92,8 +106,10 @@ st.markdown("""
 subjects = ["파이썬(최기환)", "파이썬(조상욱)", "화학(박경호)", "물리학(손승우)", "미적분(김은상)", "통계(이우주)", "기하와벡터(김은상)"]
 SUBJECT_ICONS = {"파이썬(최기환)": "🐍", "파이썬(조상욱)": "💻", "화학(박경호)": "🧪", "물리학(손승우)": "⚛️", "미적분(김은상)": "📐", "통계(이우주)": "📊", "기하와벡터(김은상)": "📏"}
 
+# --- 3. UI Component Functions ---
 def create_card(icon, title, value, desc, badge="", progress=None, color="#2980B9"):
-    b_html = f'<span style="font-size:11px; padding:2px 8px; border-radius:12px; font-weight:700; background:rgba(128,128,128,0.1); color:{color};">{badge}</span>' if badge else ""
+    # Prevent badge wrapping internally
+    b_html = f'<span style="font-size:11px; padding:2px 8px; border-radius:12px; font-weight:700; background:rgba(128,128,128,0.1); color:{color}; white-space:nowrap;">{badge}</span>' if badge else ""
     p_html = f'<div class="progress-wrap"><div class="progress-bar" style="width:{progress:.1f}%; background:{color};"></div></div>' if progress is not None else ""
     return f'<div class="metric-card"><div class="metric-header"><span class="metric-label">{icon} {title}</span>{b_html}</div><div class="metric-value" style="color: {color if color != "gray" else "var(--text-color)"};">{value}</div>{p_html}<div class="metric-sub" style="margin-top:8px;">{desc}</div></div>'
 
@@ -117,12 +133,21 @@ def load_clean_history(path):
         return df
     except: return pd.DataFrame(columns=['업데이트 날짜', '이수율(%)'])
 
+def style_attendance(s, threshold_2_3):
+    colors = []
+    for val in s:
+        if val == 0: colors.append('background-color: #FDEDEC; color: #E74C3C; font-weight: bold;') 
+        elif val >= threshold_2_3: colors.append('background-color: #E8F6F3; color: #27AE60; font-weight: bold;') 
+        else: colors.append('background-color: #F9E79F; color: #D35400; font-weight: bold;') 
+    return colors
+
+# --- 4. Main Application ---
 tabs = st.tabs(["🏆 종합 랭킹"] + [f"{SUBJECT_ICONS.get(s, '📘')} {s}" for s in subjects])
 
-# --- 2️⃣ 종합 랭킹 ---
+# Dashboard Overview Tab
 with tabs[0]:
     ranking_data = []
-    all_dept_data = []  # 🌟 삭제되었던 학과별 데이터 저장용 리스트 부활!
+    all_dept_data = []
     total_stu, total_high, total_zero = 0, 0, 0
     for subj in subjects:
         file_path = f"data_{subj}.csv"
@@ -136,7 +161,7 @@ with tabs[0]:
                     ranking_data.append({'과목': subj, '이수율': h_cnt/t_len*100, '미수강비율': z_cnt/t_len*100, '인원': t_len})
                     total_stu += t_len; total_high += h_cnt; total_zero += z_cnt
                 if '학과' in df.columns: 
-                    all_dept_data.append(df[['학과', '출석']]) # 🌟 삭제되었던 학과 데이터 수집 로직 부활!
+                    all_dept_data.append(df[['학과', '출석']])
             except: pass
 
     st.markdown("<div class='section-title'>📊 모든 과목 요약</div>", unsafe_allow_html=True)
@@ -168,7 +193,6 @@ with tabs[0]:
         box += "</div>"
         st.markdown(box, unsafe_allow_html=True)
 
-    # 🌟 삭제되었던 학과별 랭킹 화면 출력 로직 완벽 복구
     st.markdown("<div class='section-title' style='margin-top: 30px;'>🏫 학과별 수강 현황 (전 과목 종합)</div>", unsafe_allow_html=True)
     if all_dept_data:
         combined_dept_df = pd.concat(all_dept_data).dropna(subset=['학과'])
@@ -187,7 +211,7 @@ with tabs[0]:
     else:
         st.info("현재 학과 통계 데이터가 없습니다.")
 
-# --- 3️⃣ 개별 과목 ---
+# Individual Subject Tabs
 for i, subject in enumerate(subjects):
     with tabs[i+1]:
         file_path, date_path = f"data_{subject}.csv", f"date_{subject}.txt"
@@ -213,7 +237,7 @@ for i, subject in enumerate(subjects):
             t_cnt = len(df)
             z_df = df[df['출석']==0]
             h_df = df[df['출석']>=10]
-            mid_df = df[(df['출석']>0) & (df['출석']<10)] # 🌟 날아갔던 일부 수강생 변수 (mid_df) 완벽 부활!
+            mid_df = df[(df['출석']>0) & (df['출석']<10)]
             
             avg_r = (df['출석'].mean()/15*100) if t_cnt > 0 else 0
             h_r = (len(h_df)/t_cnt*100) if t_cnt > 0 else 0
@@ -232,10 +256,9 @@ for i, subject in enumerate(subjects):
             
             st.divider()
             
-            # 🌟 누락되었던 ⚠️ 일부 수강 명수 탭 이름 변경 및 명단 출력 부분 완벽 복원
             t_z, t_m, t_h = st.tabs([f"🚨 전면 미수강({len(z_df)}명)", f"⚠️ 일부 수강({len(mid_df)}명)", f"✅ 안정권({len(h_df)}명)"])
             with t_z: st.dataframe(z_df[['이름','학번','학과','출석']], use_container_width=True, hide_index=True)
-            with t_m: st.dataframe(mid_df[['이름','학번','학과','출석']], use_container_width=True, hide_index=True) # 🌟 드디어 일부 수강 명단 정상 출력!!
+            with t_m: st.dataframe(mid_df[['이름','학번','학과','출석']], use_container_width=True, hide_index=True) 
             with t_h: st.dataframe(h_df[['이름','학번','학과','출석']], use_container_width=True, hide_index=True)
         else: st.info("파일을 업로드해주세요.")
 
