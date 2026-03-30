@@ -257,9 +257,13 @@ for i, subject in enumerate(subjects):
             st.divider()
             
             t_z, t_m, t_h = st.tabs([f"🚨 전면 미수강({len(z_df)}명)", f"⚠️ 일부 수강({len(mid_df)}명)", f"✅ 안정권({len(h_df)}명)"])
-            with t_z: st.dataframe(z_df[['이름','학번','학과','출석']], use_container_width=True, hide_index=True)
-            with t_m: st.dataframe(mid_df[['이름','학번','학과','출석']], use_container_width=True, hide_index=True) 
-            with t_h: st.dataframe(h_df[['이름','학번','학과','출석']], use_container_width=True, hide_index=True)
+            
+            # --- 💡 변경된 부분: 데이터프레임에서 '이름', '출석'만 출력하도록 수정 ---
+            with t_z: st.dataframe(z_df[['이름','출석']], use_container_width=True, hide_index=True)
+            with t_m: st.dataframe(mid_df[['이름','출석']], use_container_width=True, hide_index=True) 
+            with t_h: st.dataframe(h_df[['이름','출석']], use_container_width=True, hide_index=True)
+            # -------------------------------------------------------------
+            
         else: st.info("파일을 업로드해주세요.")
 
 st.markdown("<div class='dashboard-footer'>© 2026 한양대학교 ERICA 기초과학교육센터</div>", unsafe_allow_html=True)
