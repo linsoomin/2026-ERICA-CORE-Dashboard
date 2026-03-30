@@ -91,10 +91,28 @@ st.markdown("""
     .dashboard-footer { margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(128,128,128,0.1); text-align: center; color: gray; font-size: 12px; font-weight: 500; }
     [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; background-color: transparent !important; border: 1px dashed gray !important; border-radius: 8px; }
     .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: #2980B9; color: #2980B9; }
+
+    /* ==========================================
+       🔒 로그인 전용 스타일 (디자인 통합)
+       ========================================== */
+    .login-wrapper {
+        display: flex; justify-content: center; align-items: center; min-height: 60vh;
+    }
+    .login-card {
+        background-color: var(--secondary-background-color);
+        border: 1px solid rgba(128, 128, 128, 0.2);
+        border-radius: 16px; padding: 40px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        max-width: 400px; width: 100%;
+    }
+    .login-title {
+        text-align: center; font-size: 24px; font-weight: 800; color: #2980B9;
+        margin-bottom: 25px;
+    }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 2. Hero Section ---
+# --- 2. Hero Section (디자인 유지) ---
 st.markdown("""
 <div class="hero">
     <div class="hero-badge">🐣 2026 CORE Dashboard</div>
@@ -102,6 +120,40 @@ st.markdown("""
     <div class="hero-sub">한양대학교 ERICA 기초과학교육센터 · 목표 수강률 90% 이상</div>
 </div>
 """, unsafe_allow_html=True)
+
+# ==========================================
+# 🔒 Hardcoded Authentication Logic
+# ==========================================
+# 1. 세션 상태 초기화 (로그인 여부 기억)
+if 'authenticated' not in st.session_state:
+    st.session_state['authenticated'] = False
+
+# 2. 로그인 안 했으면 로그인 화면 띄우고 코드 중단
+if not st.session_state['authenticated']:
+    col1, col2, col3 = st.columns([1, 2, 1])  # 화면 중앙 배치
+    with col2:
+        # 로그인 카드 디자인
+        st.markdown('<div class="login-card"><h2 class="login-title">🔒 CORE Mentor Login</h2></div>', unsafe_allow_html=True)
+        
+        # 실제 입력 폼 (카드 안에 위치하게 보임)
+        input_id = st.text_input("아이디 (Mentor ID)", key="login_id_input")
+        input_pw = st.text_input("비밀번호 (Password)", type="password", key="login_pw_input")
+        
+        if st.button("로그인"):
+            # 요청하신 정보와 대조
+            if input_id == "2026ericacore" and input_pw == "2026ericacore@@":
+                st.session_state['authenticated'] = True
+                st.rerun()  # 성공 시 대시보드 화면으로 새로고침
+            else:
+                st.markdown('<div style="color: #E74C3C; font-weight: bold; text-align: center; margin-top: 10px;">❌ 정보가 일치하지 않습니다.</div>', unsafe_allow_html=True)
+    
+    # 로그인 화면용 하단 푸터
+    st.markdown("<div class='dashboard-footer'>© 2026 한양대학교 ERICA 기초과학교육센터</div>", unsafe_allow_html=True)
+    st.stop()  # 로그인 성공 전까지는 아래 코드를 절대 실행하지 않음!
+
+# ==========================================
+# 🏆 여기서부터는 로그인 성공한 사람만 보이는 영역
+# ==========================================
 
 subjects = ["파이썬(최기환)", "파이썬(조상욱)", "화학(박경호)", "물리학(손승우)", "미적분(김은상)", "통계(이우주)", "기하와벡터(김은상)"]
 SUBJECT_ICONS = {"파이썬(최기환)": "🐍", "파이썬(조상욱)": "💻", "화학(박경호)": "🧪", "물리학(손승우)": "⚛️", "미적분(김은상)": "📐", "통계(이우주)": "📊", "기하와벡터(김은상)": "📏"}
@@ -215,6 +267,7 @@ with tabs[0]:
 for i, subject in enumerate(subjects):
     with tabs[i+1]:
         file_path, date_path = f"data_{subject}.csv", f"date_{subject}.txt"
+        # 🔒 파일 업로드 기능도 로그인한 멘토만 가능하도록 유지
         with st.expander("엑셀 업데이트"):
             uploaded_file = st.file_uploader(f"[{subject}] 업로드", type=['xlsx'], key=f"up_{subject}")
             if uploaded_file and st.button(f"반영하기", key=f"btn_{subject}"):
@@ -258,11 +311,10 @@ for i, subject in enumerate(subjects):
             
             t_z, t_m, t_h = st.tabs([f"🚨 전면 미수강({len(z_df)}명)", f"⚠️ 일부 수강({len(mid_df)}명)", f"✅ 안정권({len(h_df)}명)"])
             
-            # --- 💡 변경된 부분: 데이터프레임에서 '이름', '출석'만 출력하도록 수정 ---
+            # 💡 여기에서도 개인정보인 학번/학과는 빼고 이름/출석만 나오도록 유지했습니다.
             with t_z: st.dataframe(z_df[['이름','출석']], use_container_width=True, hide_index=True)
             with t_m: st.dataframe(mid_df[['이름','출석']], use_container_width=True, hide_index=True) 
             with t_h: st.dataframe(h_df[['이름','출석']], use_container_width=True, hide_index=True)
-            # -------------------------------------------------------------
             
         else: st.info("파일을 업로드해주세요.")
 
