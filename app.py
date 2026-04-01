@@ -201,29 +201,17 @@ st.markdown("""
     .dashboard-footer { margin-top: 15px; padding-top: 10px; border-top: 1px solid rgba(128,128,128,0.1); text-align: center; color: gray; font-size: 12px; font-weight: 500; }
     [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; background-color: transparent !important; border: 1px dashed gray !important; border-radius: 8px; }
     .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: #2980B9; color: #2980B9; }
-
-
 </style>
 """, unsafe_allow_html=True)
 
-# 헤더 + 로그아웃 버튼
-hero_col, logout_col = st.columns([11, 1])
-with hero_col:
-    st.markdown("""
-    <div class="hero">
-        <div class="hero-badge">🐣 2026 CORE Dashboard</div>
-        <h1 class="hero-title">2026 CORE 수강률 대시보드</h1>
-        <div class="hero-sub">한양대학교 ERICA 기초과학교육센터 · 목표 수강률 90% 이상</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with logout_col:
-    st.markdown("<div style='height: 18px'></div>", unsafe_allow_html=True)
-    st.markdown("<div class='logout-btn-wrap'>", unsafe_allow_html=True)
-    if st.button("로그아웃", key="logout_btn"):
-        st.session_state['authenticated'] = False
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+# 헤더
+st.markdown("""
+<div class="hero">
+    <div class="hero-badge">🐣 2026 CORE Dashboard</div>
+    <h1 class="hero-title">2026 CORE 수강률 대시보드</h1>
+    <div class="hero-sub">한양대학교 ERICA 기초과학교육센터 · 목표 수강률 90% 이상</div>
+</div>
+""", unsafe_allow_html=True)
 
 subjects = ["파이썬(최기환)", "파이썬(조상욱)", "화학(박경호)", "물리학(손승우)", "미적분(김은상)", "통계(이우주)", "기하와벡터(김은상)"]
 SUBJECT_ICONS = {"파이썬(최기환)": "🐍", "파이썬(조상욱)": "💻", "화학(박경호)": "🧪", "물리학(손승우)": "⚛️", "미적분(김은상)": "📐", "통계(이우주)": "📊", "기하와벡터(김은상)": "📏"}
