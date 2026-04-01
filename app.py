@@ -202,24 +202,7 @@ st.markdown("""
     [data-testid="stFileUploaderDropzone"] { padding: 5px 15px !important; background-color: transparent !important; border: 1px dashed gray !important; border-radius: 8px; }
     .stButton>button { width: 100%; font-weight: bold; border-radius: 8px; border-color: #2980B9; color: #2980B9; }
 
-    /* 로그아웃 버튼 */
-    div[data-testid="stButton"]:has(button[kind="secondary"]#logout_btn) button,
-    [data-testid="stButton"] button[kind="secondary"] { }
-    .logout-btn-wrap button {
-        background: transparent !important;
-        color: #E74C3C !important;
-        border: 1.5px solid #E74C3C !important;
-        border-radius: 8px !important;
-        font-size: 13px !important;
-        font-weight: 700 !important;
-        white-space: nowrap !important;
-        width: auto !important;
-        padding: 6px 16px !important;
-    }
-    .logout-btn-wrap button:hover {
-        background: rgba(231,76,60,0.08) !important;
-        color: #E74C3C !important;
-    }
+
 </style>
 """, unsafe_allow_html=True)
 
