@@ -262,7 +262,9 @@ with tabs[0]:
                         '과목': subj,
                         '이수율': h_cnt / t_len * 100,
                         '미수강비율': z_cnt / t_len * 100,
-                        '인원': t_len
+                        '인원': t_len,
+                        '안정권인원': h_cnt,   # ← 추가
+                        '미수강인원': z_cnt    # ← 추가
                     })
                     total_stu += t_len
                     total_high += h_cnt
@@ -290,16 +292,16 @@ with tabs[0]:
         box = "<div class='rank-card'>"
         for i, item in enumerate(sorted(ranking_data, key=lambda x: x['이수율'], reverse=True), 1):
             tone = "green" if i == 1 else "blue"
-            box += create_rank_item(i, item['과목'], f"{item['이수율']:.1f}%", tone, f"전체 {item['인원']}명 중 안정권 비율")
+            box += create_rank_item(i, item['과목'], f"{item['이수율']:.1f}%", tone, f"전체 {item['인원']}명 중 {item['안정권인원']}명 이수")
         box += "</div>"
         st.markdown(box, unsafe_allow_html=True)
 
     with col2:
-        st.markdown("<div class='section-title'>🚩 위험도 순위 (0강)</div>", unsafe_allow_html=True)
+        st.markdown("<div class='section-title'>🚩 강의 전면미수강 순위</div>", unsafe_allow_html=True)
         box = "<div class='rank-card'>"
         for i, item in enumerate(sorted(ranking_data, key=lambda x: x['미수강비율'], reverse=True), 1):
             tone = "red" if i == 1 else "amber"
-            box += create_rank_item(i, item['과목'], f"{item['미수강비율']:.1f}%", tone, f"전체 {item['인원']}명 중 0강 비율")
+            box += create_rank_item(i, item['과목'], f"{item['미수강비율']:.1f}%", tone, f"전체 {item['인원']}명 중 {item['미수강인원']}명 전면미수강")
         box += "</div>"
         st.markdown(box, unsafe_allow_html=True)
 
@@ -393,9 +395,9 @@ for i, subject in enumerate(subjects):
                 f"⚠️ 일부 수강({len(mid_df)}명)",
                 f"✅ 안정권({len(h_df)}명)"
             ])
-            with t_z: st.dataframe(z_df[['이름', '출석']], use_container_width=True, hide_index=True)
-            with t_m: st.dataframe(mid_df[['이름', '출석']], use_container_width=True, hide_index=True)
-            with t_h: st.dataframe(h_df[['이름', '출석']], use_container_width=True, hide_index=True)
+            with t_z: st.dataframe(z_df[['이름', '출석']], width='stretch', hide_index=True)
+            with t_m: st.dataframe(mid_df[['이름', '출석']], width='stretch', hide_index=True)
+            with t_h: st.dataframe(h_df[['이름', '출석']], width='stretch', hide_index=True)
         else:
             st.info("파일을 업로드해주세요.")
 
